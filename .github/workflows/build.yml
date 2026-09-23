@@ -83,6 +83,44 @@ jobs:
         with:
           args: ${{ matrix.args }}
 
+      # macOS checks. Nobody on the team has a Mac, so the runner is the test
+      # machine: Rust tests (including the Keychain vault), then launch the
+      # built app, make sure it stays up, and screenshot the desktop.
+      - name: Rust tests (macOS)
+        if: runner.os == 'macOS'
+        working-directory: src-tauri
+        run: cargo test --lib
+
+      - name: Launch smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          app=$(find src-tauri/target -maxdepth 6 -path '*/bundle/macos/*.app' | head -n 1)
+          echo "App: $app"
+          test -n "$app"
+          bin="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+          lipo -archs "$bin"
+          "$bin" > smoke.log 2>&1 &
+          pid=$!
+          sleep 25
+          screencapture -x smoke-screen.png || true
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "App exited during startup:"
+            cat smoke.log
+            exit 1
+          fi
+          kill "$pid"
+          cat smoke.log
+
+      - name: Upload smoke test screenshot
+        if: runner.os == 'macOS' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-smoke-test
+          path: |
+            smoke-screen.png
+            smoke.log
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         with:
           name: bundles-${{ matrix.platform }}

@@ -118,7 +118,8 @@ mod backend {
     use anyhow::{Context, Result};
 
     const SERVICE: &str = "waifu-usage-monitor";
-    const ACCOUNT: &str = "saved-logins-vault";
+    // Tests use their own item so they never touch a real vault.
+    const ACCOUNT: &str = if cfg!(test) { "saved-logins-vault-test" } else { "saved-logins-vault" };
 
     fn entry() -> Option<keyring::Entry> {
         keyring::Entry::new(SERVICE, ACCOUNT).ok()
@@ -131,6 +132,13 @@ mod backend {
     pub fn save(plain: &[u8]) -> Result<()> {
         entry().context("macOS Keychain is unavailable")?.set_secret(plain)?;
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn clear() {
+        if let Some(e) = entry() {
+            let _ = e.delete_credential();
+        }
     }
 }
 
@@ -196,5 +204,23 @@ mod tests {
         let sealed = super::dpapi::protect(secret).unwrap();
         assert_ne!(&sealed[..], secret);
         assert_eq!(super::dpapi::unprotect(&sealed).unwrap(), secret);
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keychain_round_trip() {
+        backend::clear();
+        let login = Login { identity: "abc".into(), email: Some("a@b.c".into()), creds: serde_json::json!({ "token": "t" }) };
+        put(&key("claude", "abc"), &login).unwrap();
+        let back = get(&key("claude", "abc")).expect("saved login");
+        assert_eq!(back.email.as_deref(), Some("a@b.c"));
+        assert_eq!(back.creds["token"], "t");
+        remove(&key("claude", "abc"));
+        assert!(get(&key("claude", "abc")).is_none());
+        backend::clear();
     }
 }
