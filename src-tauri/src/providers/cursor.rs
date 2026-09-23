@@ -14,6 +14,7 @@ use crate::vault::{self, Login, Source};
 
 const BASE: &str = "https://cursor.com";
 
+/// `%APPDATA%\Cursor\...` on Windows, `~/Library/Application Support/Cursor/...` on macOS.
 pub fn local_db_path() -> Option<PathBuf> {
     Some(dirs::config_dir()?.join("Cursor/User/globalStorage/state.vscdb"))
 }
@@ -38,7 +39,7 @@ fn read_local() -> Result<Vec<Option<String>>> {
     }
     let src = local_db_path().context("no config dir")?;
     if !src.exists() {
-        bail!("Cursor is not installed for this Windows user");
+        bail!("Cursor is not installed for this user");
     }
     let conn = rusqlite::Connection::open_with_flags(
         &src,

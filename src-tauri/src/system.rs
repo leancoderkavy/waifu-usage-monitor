@@ -51,6 +51,13 @@ static SYS: Mutex<Option<System>> = Mutex::new(None);
 
 const GB: f64 = 1024.0 * 1024.0 * 1024.0;
 
+/// macOS has no NVIDIA driver support, so GPU stats are skipped there.
+#[cfg(target_os = "macos")]
+fn nvidia_smi(_args: &[&str]) -> Option<String> {
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
 fn nvidia_smi(args: &[&str]) -> Option<String> {
     let mut cmd = std::process::Command::new("nvidia-smi");
     cmd.args(args);

@@ -61,6 +61,7 @@ const SETTINGS_KEY = "kosmos.settings";
 
 export const DEFAULT_SETTINGS: Settings = {
   waifuName: "KOS-MOS",
+  waifu: "kosmos",
   character3d: true,
   userTitle: "Senpai",
   personality: "waifu",

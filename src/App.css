@@ -1355,3 +1355,17 @@ footer {
 .custom-upload-label { display: flex; flex: 1; flex-direction: column; gap: 2px; }
 .custom-upload-label small { opacity: 0.7; font-size: 11px; }
 .custom-upload .btn { cursor: pointer; }
+
+/* Companion picker in Settings. */
+.waifu-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+.waifu-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px;
+  font: inherit; color: var(--ink); background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--edge); border-radius: 12px; cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.waifu-choice:hover { transform: translateY(-2px); border-color: var(--accent); }
+.waifu-choice.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); background: #fff; }
+.waifu-choice img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--edge); }
+.waifu-choice b { font-size: 12px; }
+.waifu-choice small { font-size: 9.5px; line-height: 1.2; text-align: center; color: var(--ink-soft); }

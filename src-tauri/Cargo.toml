@@ -1,7 +1,7 @@
 [package]
 name = "waifu-usage-monitor"
 version = "0.1.0"
-description = "Windows tray app and usage island that tracks Claude Code, Codex, Cursor and Grok usage limits"
+description = "Windows and macOS tray app and usage island that tracks Claude Code, Codex, Cursor and Grok usage limits"
 authors = ["leancoderkavy"]
 license = "MIT"
 repository = "https://github.com/leancoderkavy/waifu-usage-monitor"
@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["image-png", "tray-icon"] }
+tauri = { version = "2", features = ["image-png", "tray-icon", "macos-private-api"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -34,7 +34,8 @@ futures = "0.3.34"
 uuid = { version = "1.26.1", features = ["v4"] }
 tauri-plugin-notification = "2"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "query"] }
-keyring = { version = "3", features = ["windows-native"] }
+# Each native backend is only compiled on its own OS (Credential Manager / Keychain).
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
 sysinfo = "0.39.6"
 
 

@@ -1,5 +1,5 @@
-//! Optional ElevenLabs text-to-speech. The API key lives in Windows
-//! Credential Manager (same keyring service as account secrets) and is never
+//! Optional ElevenLabs text-to-speech. The API key lives in the OS
+//! credential store (Windows Credential Manager / macOS Keychain, same keyring service as account secrets) and is never
 //! logged or returned to the frontend.
 
 use std::{sync::OnceLock, time::Duration};

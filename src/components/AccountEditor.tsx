@@ -17,9 +17,9 @@ const HELP: Record<Provider, string> = {
   claude:
     "Reads the login Claude Code keeps in .credentials.json. Shows the 5-hour session, weekly, and per-model weekly limits for Pro and Max plans. For a second account, sign in with CLAUDE_CONFIG_DIR set to another folder and put that folder here.",
   cursor:
-    "Auto mode reads the session from the Cursor app on this PC. For other accounts, paste the WorkosCursorSessionToken cookie from cursor.com (DevTools → Application → Cookies).",
+    "Auto mode reads the session from the Cursor app on this computer. For other accounts, paste the WorkosCursorSessionToken cookie from cursor.com (DevTools → Application → Cookies).",
   grokbot:
-    "Grok Bot's weekly included usage, billed through Cursor. Uses the same login as Cursor: the Cursor app on this PC, or a pasted WorkosCursorSessionToken cookie.",
+    "Grok Bot's weekly included usage, billed through Cursor. Uses the same login as Cursor: the Cursor app on this computer, or a pasted WorkosCursorSessionToken cookie.",
   openai:
     "Needs an OpenAI admin key (sk-admin-…) from platform.openai.com → Organization → Admin keys. Shows this month's API spend against your budget.",
   xai:
@@ -100,7 +100,7 @@ export default function AccountEditor({ initial, onSave, onDelete, onClose, onRe
           {acc.provider === "codex" ? "Codex folder" : "Claude Code folder"}
           <input
             value={acc.codexHome ?? ""}
-            placeholder={acc.provider === "codex" ? "Blank = %USERPROFILE%\\.codex" : "Blank = %USERPROFILE%\\.claude"}
+            placeholder={acc.provider === "codex" ? "Blank = ~/.codex" : "Blank = ~/.claude"}
             onChange={(e) => set("codexHome", e.target.value)}
           />
         </label>
@@ -109,7 +109,7 @@ export default function AccountEditor({ initial, onSave, onDelete, onClose, onRe
       {(acc.provider === "cursor" || acc.provider === "grokbot") && (
         <label className="check">
           <input type="checkbox" checked={acc.cursorAuto} onChange={(e) => set("cursorAuto", e.target.checked)} />
-          Use the account signed in to Cursor on this PC
+          Use the account signed in to Cursor on this computer
         </label>
       )}
 
@@ -138,7 +138,7 @@ export default function AccountEditor({ initial, onSave, onDelete, onClose, onRe
           <input
             type="password"
             value={secret}
-            placeholder={acc.hasSecret ? "Saved in Windows Credential Manager. Type to replace." : ""}
+            placeholder={acc.hasSecret ? "Saved in your system keychain. Type to replace." : ""}
             onChange={(e) => setSecret(e.target.value)}
           />
         </label>

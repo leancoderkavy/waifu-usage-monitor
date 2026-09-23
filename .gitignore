@@ -26,3 +26,6 @@ dist-ssr
 # Rendered wallpaper outputs (regenerate with wallpaper/kosmos-wallpaper.mjs)
 wallpaper/*.png
 wallpaper/*.mp4
+
+# Draft images from scripts/gen_waifus.py
+scripts/out/

@@ -4,6 +4,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import Modal from "./Modal";
 import { api, type CustomKind } from "../api";
 import type { Settings } from "../types";
+import { WAIFUS, waifuById } from "../waifus";
 
 interface Props {
   settings: Settings;
@@ -29,6 +30,27 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
 
   return (
     <Modal title="Settings" onClose={onClose}>
+      <div className="waifu-picker" role="radiogroup" aria-label="Companion">
+        {WAIFUS.map((w) => (
+          <button
+            key={w.id}
+            type="button"
+            role="radio"
+            aria-checked={settings.waifu === w.id}
+            className={`waifu-choice ${settings.waifu === w.id ? "on" : ""}`}
+            title={w.blurb}
+            onClick={() => {
+              // Follow the preset's name unless the user picked their own.
+              const renamed = settings.waifuName !== waifuById(settings.waifu).name;
+              onChange({ ...settings, waifu: w.id, waifuName: renamed ? settings.waifuName : w.name });
+            }}
+          >
+            <img src={w.avatar} alt="" draggable={false} />
+            <b>{w.name}</b>
+            <small>{w.blurb}</small>
+          </button>
+        ))}
+      </div>
       <label>
         Her name
         <input value={settings.waifuName} onChange={(e) => set("waifuName", e.target.value || "KOS-MOS")} />
@@ -74,7 +96,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
       </label>
       <h3 className="section">Your own character</h3>
       <p className="help">
-        Swap in your own art. Files are copied into the app's data folder and never leave this PC. Remove one to go back
+        Swap in your own art. Files are copied into the app's data folder and never leave this computer. Remove one to go back
         to the built-in art.
       </p>
       <CustomUpload kind="avatar" label="Island icon" accept=".png,.jpg,.jpeg,.webp,.gif" hint="Square image, shown round at the top of the island" settings={settings} onChange={onChange} />
@@ -94,7 +116,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
           value={settings.voiceEngine}
           onChange={(e) => set("voiceEngine", e.target.value as Settings["voiceEngine"])}
         >
-          <option value="system">System (Windows voices)</option>
+          <option value="system">System voices</option>
           <option value="elevenlabs">ElevenLabs</option>
         </select>
       </label>
@@ -118,7 +140,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
             <input
               type="password"
               value={elevenKey}
-              placeholder={hasElevenKey ? "Key saved in Windows Credential Manager" : "xi-api-key"}
+              placeholder={hasElevenKey ? "Key saved in the system keychain" : "xi-api-key"}
               onChange={(e) => setElevenKey(e.target.value)}
             />
           </label>
@@ -151,7 +173,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
             >
               Remove
             </button>
-            {hasElevenKey && <span className="status">Key saved in Windows Credential Manager</span>}
+            {hasElevenKey && <span className="status">Key saved in the system keychain</span>}
           </div>
           <label>
             Voice
@@ -201,7 +223,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
       )}
       <label className="check">
         <input type="checkbox" checked={settings.notify} onChange={(e) => set("notify", e.target.checked)} />
-        Windows notifications when a limit runs low
+        Desktop notifications when a limit runs low
       </label>
       <label className="check">
         <input
@@ -213,7 +235,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
             setAutostart(await isEnabled());
           }}
         />
-        Start with Windows
+        Start at login
       </label>
       <h3 className="section">Local LLM voice</h3>
       <p className="help">

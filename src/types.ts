@@ -112,6 +112,8 @@ export type Mood = "happy" | "calm" | "worried" | "panic" | "pouty" | "sleepy" |
 
 export interface Settings {
   waifuName: string;
+  /** Built-in companion id from src/waifus.ts. */
+  waifu: string;
   /** Show the 3D model (falls back to the 2D art if it can't load). */
   character3d: boolean;
   userTitle: string;
