@@ -5,6 +5,7 @@ import { formatReset, remaining, runsOutAt, withoutHidden } from "./dialogue";
 import { PROVIDERS, type Account, type Provider, type Report, type SystemStats } from "./types";
 import { summarizeIslandProvider } from "./island-summary";
 import Character from "./components/Character";
+import { waifuById } from "./waifus";
 import { useCustomAsset } from "./hooks/useCustomAsset";
 import "./Island.css";
 
@@ -132,7 +133,7 @@ export default function Island() {
     >
       <section className={`island ${expanded ? "island-open" : ""}`} aria-label="LLM usage island">
         <div className="island-strip">
-          <img className="island-mark" src={avatar ?? "/models/kosmos_avatar.png"} alt="" aria-hidden="true" draggable={false} />
+          <img className="island-mark" src={avatar ?? waifuById(settings.waifu).avatar} alt="" aria-hidden="true" draggable={false} />
           <span className="island-title">{settings.waifuName}</span>
           <div className="island-summary" aria-label="Lowest remaining allowance by provider">
             {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft }) => {

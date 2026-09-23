@@ -2,8 +2,9 @@
 //!
 //! Codex, Claude Code and Cursor each remember one account at a time. Every time
 //! the app sees a login it keeps a copy here, so after you switch to another
-//! email it can keep checking the previous one. The file is encrypted with
-//! Windows DPAPI, so only your Windows user can read it.
+//! email it can keep checking the previous one. On Windows the file is
+//! encrypted with DPAPI, so only your Windows user can read it. On macOS the
+//! whole vault lives in the login Keychain instead of a file.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -32,6 +33,7 @@ pub enum Source {
 
 static LOCK: Mutex<()> = Mutex::new(());
 
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 fn path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_default()
@@ -44,18 +46,13 @@ pub fn key(provider: &str, identity: &str) -> String {
 }
 
 fn read_all() -> HashMap<String, Login> {
-    let Ok(bytes) = std::fs::read(path()) else { return HashMap::new() };
-    dpapi::unprotect(&bytes)
-        .ok()
+    backend::load()
         .and_then(|plain| serde_json::from_slice(&plain).ok())
         .unwrap_or_default()
 }
 
 fn write_all(map: &HashMap<String, Login>) -> Result<()> {
-    let p = path();
-    std::fs::create_dir_all(p.parent().context("vault path")?)?;
-    std::fs::write(p, dpapi::protect(&serde_json::to_vec(map)?)?)?;
-    Ok(())
+    backend::save(&serde_json::to_vec(map)?)
 }
 
 pub fn get(key: &str) -> Option<Login> {
@@ -96,6 +93,64 @@ pub fn pick(provider: &str, identity: Option<&str>, live: Option<Login>) -> Resu
     }
 }
 
+/// Windows: `vault.bin` in the config folder, sealed with DPAPI.
+#[cfg(windows)]
+mod backend {
+    use anyhow::{Context, Result};
+
+    pub fn load() -> Option<Vec<u8>> {
+        let bytes = std::fs::read(super::path()).ok()?;
+        super::dpapi::unprotect(&bytes).ok()
+    }
+
+    pub fn save(plain: &[u8]) -> Result<()> {
+        let p = super::path();
+        std::fs::create_dir_all(p.parent().context("vault path")?)?;
+        std::fs::write(p, super::dpapi::protect(plain)?)?;
+        Ok(())
+    }
+}
+
+/// macOS: one generic-password item in the login Keychain. Only this app (and
+/// the user, through Keychain Access) can read it.
+#[cfg(target_os = "macos")]
+mod backend {
+    use anyhow::{Context, Result};
+
+    const SERVICE: &str = "waifu-usage-monitor";
+    const ACCOUNT: &str = "saved-logins-vault";
+
+    fn entry() -> Option<keyring::Entry> {
+        keyring::Entry::new(SERVICE, ACCOUNT).ok()
+    }
+
+    pub fn load() -> Option<Vec<u8>> {
+        entry()?.get_secret().ok()
+    }
+
+    pub fn save(plain: &[u8]) -> Result<()> {
+        entry().context("macOS Keychain is unavailable")?.set_secret(plain)?;
+        Ok(())
+    }
+}
+
+/// Other platforms (not shipped): plain file, no OS encryption available here.
+#[cfg(not(any(windows, target_os = "macos")))]
+mod backend {
+    use anyhow::{Context, Result};
+
+    pub fn load() -> Option<Vec<u8>> {
+        std::fs::read(super::path()).ok()
+    }
+
+    pub fn save(plain: &[u8]) -> Result<()> {
+        let p = super::path();
+        std::fs::create_dir_all(p.parent().context("vault path")?)?;
+        std::fs::write(p, plain)?;
+        Ok(())
+    }
+}
+
 #[cfg(windows)]
 mod dpapi {
     use anyhow::{bail, Result};
@@ -133,17 +188,7 @@ mod dpapi {
     }
 }
 
-#[cfg(not(windows))]
-mod dpapi {
-    pub fn protect(data: &[u8]) -> anyhow::Result<Vec<u8>> {
-        Ok(data.to_vec())
-    }
-    pub fn unprotect(data: &[u8]) -> anyhow::Result<Vec<u8>> {
-        Ok(data.to_vec())
-    }
-}
-
-#[cfg(test)]
+#[cfg(all(test, windows))]
 mod tests {
     #[test]
     fn dpapi_round_trip() {

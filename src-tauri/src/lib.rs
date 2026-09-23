@@ -235,6 +235,13 @@ fn set_island_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
         let scale = monitor.scale_factor();
         let x = monitor.position().x as f64 / scale + (monitor.size().width as f64 / scale - width) / 2.0;
         let y = monitor.position().y as f64 / scale;
+        // macOS: the menu bar covers the top of the screen, so start below it.
+        // The work area excludes the menu bar; fall back to a typical height.
+        #[cfg(target_os = "macos")]
+        let y = {
+            let top = monitor.work_area().position.y as f64 / scale;
+            if top > y { top } else { y + 38.0 }
+        };
         window.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -248,6 +255,9 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // macOS: live in the menu bar only, no Dock icon, like the Windows tray app.
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             set_island_expanded(app.handle().clone(), false).map_err(std::io::Error::other)?;
             let show = MenuItem::with_id(app, "show", "Open", true, None::<&str>)?;
             let refresh = MenuItem::with_id(app, "refresh", "Refresh now", true, None::<&str>)?;

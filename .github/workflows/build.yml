@@ -1,0 +1,90 @@
+# Builds the Windows and macOS installers.
+#
+# - Push to main, pull request or manual run: build both platforms and upload the bundles as
+#   workflow artifacts.
+# - Push a tag like v0.2.0: same build, plus a DRAFT GitHub Release with the
+#   installers attached (publish it by hand after checking it).
+#
+# macOS builds are a universal binary (Apple Silicon + Intel) and are NOT
+# signed or notarized. On first launch users must right-click the app and pick
+# Open (or run `xattr -dr com.apple.quarantine "/Applications/Waifu Usage Monitor.app"`).
+# To sign later, add APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
+# APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID secrets
+# and pass them as env to tauri-action.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - platform: windows-latest
+            args: ''
+            rust-targets: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - run: npm test
+
+      # On tags: build and attach installers to a draft release.
+      - name: Build and draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Waifu Usage Monitor v__VERSION__
+          releaseBody: See the assets below. macOS builds are unsigned; right-click the app and choose Open on first launch.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      # Everything else: build only, then upload the bundles as artifacts.
+      - name: Build
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles-${{ matrix.platform }}
+          path: src-tauri/target/**/bundle/**
+          if-no-files-found: error

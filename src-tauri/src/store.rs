@@ -87,7 +87,7 @@ pub fn detect() -> Vec<Account> {
             hidden_meters: vec![],
         });
     }
-    if claude::default_home().join(".credentials.json").exists() {
+    if claude::has_credentials(&claude::default_home()) {
         out.push(Account {
             id: uuid::Uuid::new_v4().to_string(),
             provider: Provider::Claude,
@@ -339,7 +339,7 @@ pub fn get_secret(id: &str) -> Option<String> {
 }
 
 pub fn set_secret(id: &str, secret: &str) -> Result<()> {
-    let e = entry(id).context("Windows Credential Manager is unavailable")?;
+    let e = entry(id).context("the system credential store (Windows Credential Manager / macOS Keychain) is unavailable")?;
     e.set_password(secret.trim())?;
     Ok(())
 }

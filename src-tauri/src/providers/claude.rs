@@ -1,5 +1,6 @@
 //! Claude plan limits (Pro / Max) from the OAuth usage endpoint, using the
-//! login Claude Code keeps in `~/.claude/.credentials.json`.
+//! login Claude Code keeps in `~/.claude/.credentials.json` (Windows, Linux)
+//! or in the login Keychain as "Claude Code-credentials" (macOS).
 
 use std::path::PathBuf;
 
@@ -28,11 +29,56 @@ const TOKEN_URLS: [&str; 2] = [
     "https://console.anthropic.com/v1/oauth/token",
 ];
 
+/// Raw Claude Code credentials JSON for a folder: `.credentials.json` if it
+/// exists, else (macOS, default folder only) the login Keychain item Claude
+/// Code writes there instead of the file.
+fn read_credentials(home: &std::path::Path) -> Option<String> {
+    if let Ok(text) = std::fs::read_to_string(home.join(".credentials.json")) {
+        return Some(text);
+    }
+    #[cfg(target_os = "macos")]
+    if home == default_home() {
+        return keychain_credentials();
+    }
+    None
+}
+
+/// Reads the "Claude Code-credentials" generic password through `security`,
+/// the same tool Claude Code uses to write it, so the item's access list
+/// already allows it and macOS does not prompt.
+#[cfg(target_os = "macos")]
+fn keychain_credentials() -> Option<String> {
+    let out = std::process::Command::new("/usr/bin/security")
+        .args(["find-generic-password", "-s", "Claude Code-credentials", "-w"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let text = String::from_utf8(out.stdout).ok()?;
+    let text = text.trim();
+    (!text.is_empty()).then(|| text.to_string())
+}
+
+/// True when Claude Code has a login stored for this folder (file or Keychain).
+pub fn has_credentials(home: &std::path::Path) -> bool {
+    home.join(".credentials.json").exists() || {
+        #[cfg(target_os = "macos")]
+        {
+            home == default_home() && keychain_credentials().is_some()
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            false
+        }
+    }
+}
+
 /// The Claude login in a Claude Code folder, keyed by Claude account uuid.
 /// The account details live in `.claude.json`: next to the folder for the
 /// default `~/.claude`, inside it when CLAUDE_CONFIG_DIR is used.
 pub fn live_login(home: &std::path::Path) -> Option<Login> {
-    let creds: Value = serde_json::from_str(&std::fs::read_to_string(home.join(".credentials.json")).ok()?).ok()?;
+    let creds: Value = serde_json::from_str(&read_credentials(home)?).ok()?;
     let oauth = creds["claudeAiOauth"].clone();
     oauth["accessToken"].as_str()?;
     let config = if home == default_home() {
@@ -123,6 +169,9 @@ pub async fn fetch(http: &reqwest::Client, acc: &Account) -> Result<Report> {
     let live = live_login(&home);
     if live.is_none() && acc.identity.is_none() {
         let path = home.join(".credentials.json");
+        if cfg!(target_os = "macos") && home == default_home() {
+            bail!("no Claude Code login in the macOS Keychain or at {}. Run `claude` and /login.", path.display());
+        }
         bail!("no Claude Code login at {}. Run `claude` and /login.", path.display());
     }
     let (login, source) = vault::pick("claude", acc.identity.as_deref(), live)?;

@@ -1,6 +1,7 @@
 import { PROVIDERS, type Account, type Announcement, type Meter, type Mood, type Report, type Session, type Settings, type SystemStats } from "./types";
 
 import { runsOutAt } from "./projection";
+import { waifuById } from "./waifus";
 
 export { runsOutAt };
 
@@ -175,6 +176,7 @@ export function chatterLines(reports: Report[], s: Settings): string[] {
     `Drink some water between prompts, ${t}! Hydration before generation~`,
     `Don't forget to commit your work, ${t}. I'd cry if the agent wiped it.`,
     "Ehehe~ you and the model make a good team. But I'm still your favourite, right?",
+    ...waifuById(s.waifu).lines(t),
   ] : [
     `I am ${s.waifuName}. My directive is to monitor your usage limits, ${t}.`,
     "Hydration levels unknown. I recommend drinking water.",

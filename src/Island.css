@@ -22,7 +22,7 @@ body:has(.island-canvas),
   border: 1px solid #b6c9eb;
   border-radius: 0 0 27px 27px;
   background: linear-gradient(135deg, rgba(250, 252, 255, .98), rgba(229, 239, 255, .98) 55%, rgba(250, 238, 249, .98));
-  box-shadow: 0 14px 38px rgba(37, 64, 124, .24), inset 0 2px 0 rgba(255, 255, 255, .9);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .9);
 }
 
 .island::before {
@@ -103,4 +103,6 @@ body:has(.island-canvas),
 .island-error { margin: 5px 0; color: #c2334a; font-size: 11px; overflow-wrap: anywhere; }
 .island-empty { padding: 25px; text-align: center; color: #6b7896; font-size: 12px; }
 .island-eta { color: #e8304f; font-weight: 700; }
-.island-portrait .custom-portrait { position: absolute; inset: 8px 4px 58px; }
+/* Preset or uploaded 2D portrait: fill the column, keep the face in view. */
+.island-portrait .custom-portrait { position: absolute; top: 8px; left: 0; right: 0; bottom: 58px; width: auto; height: auto; }
+.island-portrait .custom-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
