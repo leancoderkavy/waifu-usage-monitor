@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>KOS-MOS // LLM Link</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #03040f; }
+  canvas, svg { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; }
+</style>
+<script src="assets.js"></script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="fx"></canvas>
+<svg id="hud" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+// Everything is a pure function of loop phase u = (t mod LOOP) / LOOP, so the animation loops seamlessly
+// and can be captured frame-by-frame with window.renderAt(t). Coordinates are in 5120x2880 art space.
+const LOOP = 12;
+const IW = 5120, IH = 2880;
+const TAU = Math.PI * 2;
+const HEAD = [2520, 850];
+const EYES = [[2344, 912], [2700, 912]];
+const CLOSED = [2010, 408, 1024, 1024];
+const BLINKS = [3.2, 8.6, 8.95]; // seconds into the loop; the last pair is a double blink
+const capture = new URLSearchParams(location.search).has("capture");
+
+const BADGES = [
+  { name: "CLAUDE", sub: "ANTHROPIC", slug: "claude", color: "#ff9a6e", x: 1050, y: 640, tx: 1950, ty: 1250 },
+  { name: "CODEX", sub: "OPENAI", slug: "openai", color: "#4fe3bd", x: 620, y: 1470, tx: 1800, ty: 1650 },
+  { name: "GEMINI", sub: "GOOGLE", slug: "googlegemini", color: "#8fb2ff", x: 1050, y: 2300, tx: 1900, ty: 2100 },
+  { name: "CURSOR", sub: "ANYSPHERE", slug: "cursor", color: "#e6ecff", x: 4070, y: 640, tx: 3170, ty: 1250 },
+  { name: "GROK", sub: "XAI", text: "xAI", color: "#ff6f91", x: 4500, y: 1470, tx: 3320, ty: 1650 },
+  { name: "DEEPSEEK", sub: "DEEPSEEK-AI", slug: "deepseek", color: "#6f8dff", x: 4070, y: 2300, tx: 3220, ty: 2100 },
+];
+// Ultrawide screens (e.g. 5120x1440) only show a horizontal band of the 16:9 art, so frame her face
+// and zig-zag the badges inside that band instead.
+const WIDE_FOCUS_Y = 970;
+const WIDE = [[470, 560, 1900, 1150], [1130, 930, 1850, 1350], [470, 1230, 1900, 1500],
+  [4650, 560, 3170, 1150], [3990, 930, 3270, 1350], [4650, 1230, 3220, 1500]];
+const layout = (wide) => BADGES.map((b, i) =>
+  (wide ? { ...b, x: WIDE[i][0], y: WIDE[i][1], tx: WIDE[i][2], ty: WIDE[i][3], k: 0.8 } : { ...b, k: 1 }));
+let wideMode = null;
+
+// Deterministic RNG so particles are identical every run (and in the exported video).
+let seed = 7;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+
+const load = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src; });
+
+// ---------- WebGL base layer: hair sway, blink, camera drift ----------
+const gl = document.getElementById("gl").getContext("webgl2", { antialias: false, preserveDrawingBuffer: true });
+const VS = `#version 300 es
+in vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+const FS = `#version 300 es
+precision highp float;
+uniform sampler2D uBase, uHair, uClosed;
+uniform vec2 uView; uniform vec3 uX; uniform float uU, uBlink; uniform vec4 uRect;
+out vec4 o;
+const vec2 I = vec2(${IW}., ${IH}.);
+void main(){
+  vec2 frag = vec2(gl_FragCoord.x, uView.y - gl_FragCoord.y);
+  vec2 p = (frag - uX.yz) / uX.x;
+  float m = texture(uHair, p / I).r;
+  vec2 head = vec2(${HEAD[0]}., ${HEAD[1]}.);
+  float d = length(p - head) / 1000.;
+  float side = p.x < head.x ? -1. : 1.;
+  float ph = uU * 6.2831853;
+  // Two waves travelling outward along the hair; integer frequencies keep the loop seamless.
+  float w1 = sin(ph * 2. - d * 4.0 + p.y * 0.0015);
+  float w2 = sin(ph * 3. - d * 6.5 + 1.3);
+  vec2 off = vec2(side * (w1 * 16. + w2 * 7.), w1 * 9. + w2 * 4.) * m;
+  vec2 q = p - off;
+  vec4 c = texture(uBase, q / I);
+  vec2 cq = (q - uRect.xy) / uRect.zw;
+  if (uBlink > 0. && cq.x >= 0. && cq.y >= 0. && cq.x <= 1. && cq.y <= 1.) c = mix(c, texture(uClosed, cq), uBlink);
+  o = vec4(c.rgb, 1.);
+}`;
+function shader(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog); gl.useProgram(prog);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const U = (n) => gl.getUniformLocation(prog, n);
+function texture(img, unit, name) {
+  const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.uniform1i(U(name), unit);
+}
+
+// ---------- FX layer: warp streaks, particles, eye glow, scan line ----------
+const fx = document.getElementById("fx").getContext("2d");
+const streakCv = document.createElement("canvas");
+const sx = streakCv.getContext("2d");
+const VP = [2560, 1150]; // vanishing point of the background warp lines
+const STREAKS = Array.from({ length: 140 }, () => ({
+  a: rnd() * TAU, ph: rnd(), k: 1 + Math.floor(rnd() * 3),
+  col: ["#7fe8ff", "#ffb070", "#ff7fae", "#b8c8ff"][Math.floor(rnd() * 4)], w: 2 + rnd() * 4,
+}));
+const MOTES = Array.from({ length: 230 }, (_, i) => ({
+  x: rnd() * IW, y: rnd() * IH, r: 2 + Math.pow(rnd(), 2) * 9, ph: rnd(), rise: i < 130,
+  k: 1 + Math.floor(rnd() * 2), orbit: 20 + rnd() * 60,
+  col: ["#bff4ff", "#ffffff", "#ffd0e4", "#9fd0ff"][Math.floor(rnd() * 4)],
+}));
+const sprites = {};
+function sprite(col) {
+  if (sprites[col]) return sprites[col];
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const g = c.getContext("2d"); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, "#fff"); r.addColorStop(0.18, col); r.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64); return (sprites[col] = c);
+}
+
+// ---------- HUD layer: LLM badges ----------
+const NS = "http://www.w3.org/2000/svg";
+const hud = document.getElementById("hud");
+const R = 200;
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function buildHud(BADGES) {
+  hud.innerHTML = "";
+  const defs = el("defs", {}, hud);
+  defs.innerHTML = `<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="soft" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="6"/></filter>` +
+    BADGES.map((b, i) => `<radialGradient id="disc${i}"><stop offset="0" stop-color="#050a24" stop-opacity="0.72"/><stop offset="0.75" stop-color="#0b1540" stop-opacity="0.6"/><stop offset="1" stop-color="${b.color}" stop-opacity="0.35"/></radialGradient>
+    <linearGradient id="link${i}" gradientUnits="userSpaceOnUse" x1="${b.x}" y1="${b.y}" x2="${b.tx}" y2="${b.ty}"><stop offset="0" stop-color="${b.color}" stop-opacity="0.9"/><stop offset="1" stop-color="${b.color}" stop-opacity="0.08"/></linearGradient>
+    <filter id="lg${i}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="14" result="b"/><feFlood flood-color="${b.color}"/><feComposite in2="b" operator="in" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`).join("");
+  const root = el("g", { id: "root" }, hud);
+  return BADGES.map((b, i) => {
+    const { x, y, color } = b;
+    const ang = Math.atan2(b.ty - y, b.tx - x);
+    const lx = x + Math.cos(ang) * (R * b.k + 20), ly = y + Math.sin(ang) * (R * b.k + 20);
+    const link = el("path", { d: `M${lx},${ly} Q${(lx + b.tx) / 2},${ly} ${b.tx},${b.ty}`, fill: "none",
+      stroke: `url(#link${i})`, "stroke-width": 5, "stroke-dasharray": "36 14 6 14", filter: "url(#glow)" }, root);
+    const pulse = el("circle", { r: 12, fill: "#fff", filter: "url(#glow)" }, root);
+    el("circle", { cx: b.tx, cy: b.ty, r: 10, fill: color, opacity: 0.5, filter: "url(#glow)" }, root);
+    const g = el("g", {}, root);
+    const hexPts = [0, 1, 2, 3, 4, 5].map((k) => { const a = (Math.PI / 3) * k + Math.PI / 6;
+      return `${x + Math.cos(a) * (R + 70)},${y + Math.sin(a) * (R + 70)}`; }).join(" ");
+    const hex = el("polygon", { points: hexPts, fill: "none", stroke: color, "stroke-width": 3, opacity: 0.45 }, g);
+    const ring = el("circle", { cx: x, cy: y, r: R + 38, fill: "none", stroke: color, "stroke-width": 4,
+      "stroke-dasharray": "70 22 10 22", opacity: 0.7 }, g);
+    el("circle", { cx: x, cy: y, r: R, fill: `url(#disc${i})` }, g);
+    el("circle", { cx: x, cy: y, r: R, fill: "none", stroke: color, "stroke-width": 7, filter: "url(#glow)" }, g);
+    el("circle", { cx: x, cy: y, r: R - 22, fill: "none", stroke: "#fff", "stroke-width": 1.5, opacity: 0.35 }, g);
+    const logo = el("g", { filter: `url(#lg${i})` }, g);
+    if (b.text) {
+      const t = el("text", { x, y: y + 45, "text-anchor": "middle", "font-family": "Segoe UI, Arial, sans-serif",
+        "font-weight": 700, "font-size": 130, fill: "#fff" }, logo); t.textContent = b.text;
+    } else {
+      const s = 9.5; const lg = el("g", { transform: `translate(${x - 12 * s},${y - 12 * s}) scale(${s})`, fill: "#fff" }, logo);
+      for (const d of LOGOS[b.slug]) el("path", { d }, lg);
+    }
+    el("rect", { x: x - 330, y: y + R + 55, width: 660, height: 150, rx: 30, fill: "#050a24", opacity: 0.6, filter: "url(#soft)" }, g);
+    el("rect", { x: x - 330, y: y + R + 55, width: 660, height: 150, rx: 30, fill: "none", stroke: color, "stroke-width": 2, opacity: 0.4 }, g);
+    const name = el("text", { x, y: y + R + 130, "text-anchor": "middle", "font-family": "Segoe UI, Arial, sans-serif",
+      "font-weight": 300, "font-size": 70, "letter-spacing": 18, fill: "#fff", filter: "url(#glow)" }, g);
+    name.textContent = b.name;
+    const sub = el("text", { x, y: y + R + 185, "text-anchor": "middle", "font-family": "Consolas, monospace",
+      "font-size": 32, "letter-spacing": 8, fill: color, opacity: 0.85 }, g);
+    sub.textContent = `${b.sub} · LINK ONLINE`;
+    return { b, i, g, hex, ring, link, pulse, logo, len: link.getTotalLength() };
+  });
+}
+
+// ---------- frame ----------
+let badges, W = 0, H = 0, DPR = 1, mouse = [0, 0], mouseS = [0, 0];
+function resize() {
+  DPR = capture ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  for (const c of [gl.canvas, fx.canvas]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
+  streakCv.width = fx.canvas.width; streakCv.height = fx.canvas.height;
+  hud.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const wide = W / H > 2.2;
+  if (wide !== wideMode) { wideMode = wide; badges = buildHud(layout(wide)); }
+}
+function blinkAt(t) {
+  let v = 0;
+  for (const b of BLINKS) { const d = t - b;
+    if (d >= 0 && d < 0.07) v = Math.max(v, d / 0.07);
+    else if (d >= 0.07 && d < 0.13) v = 1;
+    else if (d >= 0.13 && d < 0.25) v = Math.max(v, 1 - (d - 0.13) / 0.12); }
+  return v;
+}
+
+function renderAt(tAbs) {
+  const t = ((tAbs % LOOP) + LOOP) % LOOP, u = t / LOOP;
+  // Slow camera drift: zoom stays above 1 so the edges never show.
+  const zoom = 1.03 + 0.012 * Math.sin(TAU * u);
+  const s = Math.max(W / IW, H / IH) * zoom;
+  mouseS[0] += (mouse[0] - mouseS[0]) * 0.05; mouseS[1] += (mouse[1] - mouseS[1]) * 0.05;
+  const px = 22 * Math.sin(TAU * u + 0.7) + mouseS[0] * 25, py = 12 * Math.sin(TAU * u * 2) + mouseS[1] * 15;
+  const ox = (W - IW * s) / 2 + px * s;
+  const oy = wideMode ? Math.min(0, Math.max(H - IH * s, H / 2 - WIDE_FOCUS_Y * s)) + py * s : (H - IH * s) / 2 + py * s;
+  const blink = blinkAt(t);
+
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.uniform2f(U("uView"), gl.canvas.width, gl.canvas.height);
+  gl.uniform3f(U("uX"), s * DPR, ox * DPR, oy * DPR);
+  gl.uniform1f(U("uU"), u); gl.uniform1f(U("uBlink"), blink);
+  gl.uniform4f(U("uRect"), ...CLOSED);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // FX
+  const c = fx; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, c.canvas.width, c.canvas.height);
+  const T = [s * DPR, 0, 0, s * DPR, ox * DPR, oy * DPR];
+  // Warp streaks, masked to the dark background so they pass behind her.
+  sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = "source-over";
+  sx.clearRect(0, 0, streakCv.width, streakCv.height); sx.setTransform(...T); sx.lineCap = "round";
+  for (const st of STREAKS) {
+    const life = (st.ph + st.k * u) % 1, r0 = 500 + life * 3600, len = 80 + life * 520;
+    const a = Math.sin(Math.PI * life);
+    const x0 = VP[0] + Math.cos(st.a) * r0, y0 = VP[1] + Math.sin(st.a) * r0 * 0.7;
+    const x1 = VP[0] + Math.cos(st.a) * (r0 + len), y1 = VP[1] + Math.sin(st.a) * (r0 + len) * 0.7;
+    const gr = sx.createLinearGradient(x0, y0, x1, y1);
+    gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, st.col);
+    sx.globalAlpha = 0.55 * a; sx.strokeStyle = gr; sx.lineWidth = st.w;
+    sx.beginPath(); sx.moveTo(x0, y0); sx.lineTo(x1, y1); sx.stroke();
+  }
+  sx.globalAlpha = 1; sx.globalCompositeOperation = "destination-in"; sx.drawImage(masks.bg, 0, 0, IW, IH);
+  c.globalCompositeOperation = "lighter"; c.drawImage(streakCv, 0, 0);
+  c.setTransform(...T);
+  // Planet breathing glow.
+  const pg = c.createRadialGradient(2500, -900, 1500, 2500, -900, 2300);
+  pg.addColorStop(0, "rgba(255,70,90,0)"); pg.addColorStop(0.35, "rgba(255,70,90,0.16)"); pg.addColorStop(1, "rgba(255,70,90,0)");
+  c.globalAlpha = 0.6 + 0.4 * Math.sin(TAU * u); c.fillStyle = pg; c.fillRect(0, 0, IW, 1500);
+  // Eye glow, dimmed while blinking.
+  c.globalAlpha = (0.55 + 0.45 * Math.sin(TAU * u * 3)) * (1 - blink);
+  for (const [ex, ey] of EYES) { const eg = c.createRadialGradient(ex, ey, 0, ex, ey, 95);
+    eg.addColorStop(0, "rgba(255,60,70,0.45)"); eg.addColorStop(1, "rgba(255,60,70,0)");
+    c.fillStyle = eg; c.fillRect(ex - 95, ey - 95, 190, 190); }
+  // Motes.
+  for (const m of MOTES) {
+    let x = m.x, y = m.y;
+    if (m.rise) { y = ((m.y - m.k * u * IH) % IH + IH) % IH; x += 40 * Math.sin(TAU * (u * 2 + m.ph)); }
+    else { x += m.orbit * Math.cos(TAU * (u * m.k + m.ph)); y += m.orbit * Math.sin(TAU * (u * m.k + m.ph)); }
+    c.globalAlpha = 0.35 + 0.65 * Math.pow(0.5 + 0.5 * Math.sin(TAU * (u * 3 * m.k + m.ph)), 2);
+    const r = m.r * 4; c.drawImage(sprite(m.col), x - r, y - r, r * 2, r * 2);
+  }
+  // Scan line sweeping down twice per loop.
+  const sy = ((u * 2) % 1) * (IH + 400) - 200;
+  const sg = c.createLinearGradient(0, sy - 60, 0, sy + 60);
+  sg.addColorStop(0, "rgba(90,220,255,0)"); sg.addColorStop(0.5, "rgba(90,220,255,0.10)"); sg.addColorStop(1, "rgba(90,220,255,0)");
+  c.globalAlpha = 1; c.fillStyle = sg; c.fillRect(0, sy - 60, IW, 120);
+  c.globalCompositeOperation = "source-over"; c.globalAlpha = 1;
+
+  // HUD (slightly more parallax than the art so it floats in front).
+  const hx = ox + mouseS[0] * 12, hy = oy + mouseS[1] * 8;
+  document.getElementById("root").setAttribute("transform", `translate(${hx},${hy}) scale(${s})`);
+  for (const B of badges) {
+    const { b, i } = B;
+    const bob = 14 * Math.sin(TAU * (u + i / 6));
+    B.g.setAttribute("transform", `translate(${b.x},${b.y + bob}) scale(${b.k}) translate(${-b.x},${-b.y})`);
+    const dir = i % 2 ? 1 : -1;
+    B.ring.setAttribute("transform", `rotate(${i * 23 + dir * 360 * u} ${b.x} ${b.y})`);
+    B.hex.setAttribute("transform", `rotate(${-dir * 60 * u} ${b.x} ${b.y})`);
+    B.link.setAttribute("stroke-dashoffset", String(-70 * 4 * u));
+    B.logo.setAttribute("opacity", String(0.82 + 0.18 * Math.sin(TAU * (u * 2 + i / 6))));
+    // Data pulse travelling from badge to her, three per loop, staggered per badge.
+    const pp = (u * 3 + i / 6) % 1, pt = B.link.getPointAtLength(pp * B.len);
+    B.pulse.setAttribute("cx", pt.x); B.pulse.setAttribute("cy", pt.y);
+    B.pulse.setAttribute("opacity", String(Math.sin(Math.PI * pp) * 0.9));
+    B.pulse.setAttribute("fill", b.color);
+  }
+}
+
+let masks;
+(async () => {
+  const [base, hair, bg, closed] = await Promise.all([ASSETS.base, ASSETS.hair, ASSETS.bg, ASSETS.closed].map(load));
+  texture(base, 0, "uBase"); texture(hair, 1, "uHair"); texture(closed, 2, "uClosed");
+  masks = { bg };
+  resize();
+  addEventListener("resize", resize);
+  addEventListener("mousemove", (e) => { mouse = [e.clientX / W - 0.5, e.clientY / H - 0.5]; });
+  window.renderAt = renderAt;
+  window.ready = true;
+  if (!capture) { const loop = (ms) => { renderAt(ms / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+})();
+</script>
+</body>
+</html>
