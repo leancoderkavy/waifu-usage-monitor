@@ -1,94 +1,188 @@
-# KOS-MOS Usage Monitor
+<div align="center">
 
-A Windows tray app that watches how much AI usage you have left across all your accounts. A KOS-MOS-style android companion (fan art inspired by *Xenosaga: The Animation*) reads it out, reacts to low limits, and sends Windows notifications.
+<img src="docs/screenshots/island-strip.png" alt="Waifu Usage Monitor island: Codex, Claude, Cursor and Grok usage limits at the top of the Windows desktop" width="680">
 
-Built with Tauri 2 (Rust + WebView2), React 19, Vite 8 and Motion.
+# Waifu Usage Monitor
 
-## What it tracks
+**Keep track of your Claude Code, Codex, Cursor and Grok usage limits on Windows, with an anime companion who reads them out.**
+
+A free, open-source Windows tray app and always-on-top "dynamic island". It shows how much of your AI usage limits you have left across every account: the 5-hour and weekly windows, per-model caps, and banked resets. It warns you before you hit a rate limit.
+
+[![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows)](#install)
+[![Built with Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri)](https://tauri.app)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Rust](https://img.shields.io/badge/Rust-stable-000000?logo=rust)](https://www.rust-lang.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![No telemetry](https://img.shields.io/badge/telemetry-none-brightgreen)](#privacy)
+
+</div>
+
+![Waifu Usage Monitor dashboard showing Codex, Cursor, Claude and Grok usage limits, projected run-out times and the 3D anime companion](docs/screenshots/dashboard.png)
+
+## Why this one?
+
+Most usage trackers are either macOS menu-bar apps or terminal tools. This one is built for Windows. It watches every major AI coding plan in one place and gives the numbers a personality.
+
+- **One glance, every limit.** A slim island at the top of your screen shows the tightest limit for each provider. Hover it for the full breakdown.
+- **Know before you hit the wall.** A burn-rate projection turns "47% left" into "at this pace you run out in 2h 10m, before the reset".
+- **Several accounts, no setup.** Switch emails in Codex, Claude Code or Cursor as usual, and each login gets its own card.
+- **Reset tracking.** The calendar shows global resets announced by OpenAI, Anthropic and Cursor, early resets on your own login, and banked reset credits.
+- **A waifu who cares about your tokens.** *"Mou, Senpai! Cursor Included usage is at 11% remaining and restores in 18d 15h. Switch accounts for me, okay?"* Prefer calm status reports? Switch her to the Android personality.
+- **Private by design.** Logins stay on your PC, encrypted with Windows DPAPI or kept in Credential Manager. There is no telemetry and no server.
+
+## Supported providers
 
 | Provider | What you see | How it signs in |
 | --- | --- | --- |
-| ChatGPT / Codex | 5-hour and weekly plan windows, per-model limits, banked reset credits | The Codex CLI login in `%USERPROFILE%\.codex\auth.json` (auto-detected) |
-| Claude | 5-hour session, weekly, per-model weekly (Pro / Max), extra usage | The Claude Code login in `%USERPROFILE%\.claude\.credentials.json` (auto-detected) |
-| Cursor | Included, Auto-mode, named-model and on-demand usage for this billing cycle | The Cursor app on this PC (auto-detected), or a pasted `WorkosCursorSessionToken` cookie |
-| OpenAI API | This month's usage as a share of a budget you set | Admin key (`sk-admin-…`) |
-| Grok / xAI API | Share of prepaid credits used |
-| Grok Bot | Weekly included usage (billed through Cursor, same login) | Management key + team id |
+| **ChatGPT / Codex** | 5-hour and weekly plan windows, per-model limits, banked reset credits | The Codex CLI login in `%USERPROFILE%\.codex\auth.json` (auto-detected) |
+| **Claude / Claude Code** | 5-hour session, weekly, per-model weekly (Pro / Max), extra usage | The Claude Code login in `%USERPROFILE%\.claude\.credentials.json` (auto-detected) |
+| **Cursor** | Included, Auto-mode, named-model and on-demand usage for this billing cycle | The Cursor app on this PC (auto-detected), or a pasted `WorkosCursorSessionToken` cookie |
+| **Grok Bot** | Weekly included usage (billed through Cursor) | Same login as Cursor |
+| **OpenAI API** | This month's spend as a share of a budget you set | Admin key (`sk-admin-…`) |
+| **Grok / xAI API** | Share of prepaid credits used | Management key + team id |
 
-Every meter shows usage as a percentage, with no dollar amounts. Pasted keys go to Windows Credential Manager, not to disk. The app reads the tools' login files but never writes to them.
+Every meter shows usage as a percentage, with no dollar amounts. The app reads the tools' login files but never writes to them.
+
+## Screenshots
+
+| Usage island (hover to expand) | System monitor |
+| --- | --- |
+| ![Expanded usage island with CPU, RAM, GPU and VRAM gauges and per-account limits](docs/screenshots/island.png) | ![System tab with CPU, RAM, GPU and VRAM rings, 2-minute graphs and heaviest processes](docs/screenshots/system.png) |
+| **Reset calendar** | **Settings: personality, voice, your own character** |
+| ![Reset calendar with announced global resets, early resets and bank resets](docs/screenshots/calendar.png) | ![Settings with personality picker and custom character uploads](docs/screenshots/settings.png) |
+
+## Features
+
+### Usage island
+An always-on-top strip at the top of the screen, like a phone's dynamic island.
+
+- **Collapsed:** each provider's tightest limit, plus a red warning pill only when CPU, RAM, GPU or VRAM runs hot.
+- **Hover:** hardware gauges, every account's meters with reset countdowns, and run-out projections.
+
+### Burn-rate projection
+The app compares how much of a window you have used with how much of the window has passed. When your current pace would drain the limit before it resets, the meter shows **⚡ runs out in ~Xh** and she warns you. The first 10% of a window is too noisy, so nothing is projected then.
 
 ### Several accounts on different emails
-
-No setup needed. Sign in to each email once in Codex, Claude Code or Cursor, the way you normally switch accounts. Every time the app refreshes it:
+Sign in to each email once in Codex, Claude Code or Cursor, the way you normally switch accounts. On every refresh the app:
 
 1. Checks who is signed in to each tool.
-2. Saves that login to an encrypted vault (`%APPDATA%\com.waifu.usagemonitor\vault.bin`, encrypted with Windows DPAPI so only your Windows user can read it).
+2. Saves that login to an encrypted vault (`%APPDATA%\com.waifu.usagemonitor\vault.bin`, Windows DPAPI).
 3. Adds a card for any email it hasn't seen before.
 
-After you switch to another email, it keeps checking the earlier ones with their saved logins. Those cards show a **SAVED** badge. When a saved login expires, the app renews it. It never renews the login the tool is using right now, so Codex and Claude Code stay signed in.
+It keeps checking earlier logins with their saved tokens and renews them when they expire. It never touches the login a tool is using right now. Hide meters you don't care about with **–**, and restore removed cards from **Add account → Removed accounts**.
 
-Claude logins expire after about 8 hours and Codex after about 10 days, so the app renews them in the background. Cursor logins last about 60 days. When one runs out, sign in to that account in Cursor once more.
+### Reset calendar
+- **Global resets (announced):** limits reset for everyone, or everyone got a banked reset. These come from public feeds, and you get a Windows notification.
+- **Early resets (this login):** a window reset before its scheduled time, matched against announced resets.
+- **Bank resets:** free reset credits granted, used or expiring (ChatGPT / Codex).
+- **Scheduled and upcoming resets** for daily or longer windows.
 
-### Editing cards
+Feeds are polled every 15 minutes, with no login: [codexresets.com](https://codexresets.com/api/resets), [inmve/token-resets](https://github.com/inmve/token-resets/releases), and any x.com reset post you paste from an official account (@claudeai, @AnthropicAI, @OpenAIDevs, @cursor_ai, @xai and others).
 
-- Hover a meter and click **–** to hide it. Hidden meters stop counting toward her mood and alerts. Click the **+ name** chip at the bottom of the card to bring one back.
-- Removing a card keeps its saved login. **Add account → Removed accounts** has **Restore**, and **Forget** to delete it for good.
-
-## Sessions and System tabs
-
-- **Sessions:** Codex and Claude Code sessions from the last 24 hours, read from their local logs, plus the models Ollama has loaded. Each row shows the model, effort, project, branch, context size and how long ago it was active.
+### Sessions and System tabs
+- **Sessions:** Codex and Claude Code sessions from the last 24 hours, read from local logs, plus the models Ollama has loaded. Each row shows model, effort, project, branch and context size.
 - **System:** CPU, RAM, GPU and VRAM gauges with 2-minute graphs, per-thread load and the heaviest processes. GPU stats need an NVIDIA GPU (`nvidia-smi`).
 
-Not covered: grok.com / SuperGrok chat limits and ChatGPT web message caps. Neither has an API.
+## Make her yours
 
-## Reset calendar
-
-The **Reset calendar** tab shows:
-
-- **Global resets (announced)**: a provider reset limits for everyone, or gave everyone a banked reset. These come from public feeds (see below). You get a Windows notification and she announces it.
-- **Early resets (this login)**: one of your windows reset before its scheduled time. If it lines up with an announced global reset, it's marked **✓ Matches an announced global reset**.
-- **Bank resets**: free reset credits granted, used, or expiring (ChatGPT / Codex).
-- **Scheduled and upcoming resets** for daily or longer windows. 5-hour windows are left off to keep the calendar readable.
-
-### Where global resets come from
-
-Resets are announced on X, which has no free API. The app polls these sources every 15 minutes, with no login:
-
-| Source | Covers |
+| Setting | Options |
 | --- | --- |
-| [codexresets.com/api/resets](https://codexresets.com/api/resets) | Every confirmed Codex reset posted by the Codex lead (@thsottiaux) |
-| [inmve/token-resets](https://github.com/inmve/token-resets/releases) releases | Upcoming-reset teasers |
-| X posts you add | Any provider. Paste an x.com link in the calendar. The app reads it through X's public embed endpoint and keeps it only if it's from an official account (@claudeai, @AnthropicAI, @thsottiaux, @OpenAIDevs, @OpenAI, @cursor_ai, @xai, @grok) and reads like a reset. |
+| **Personality** | **Waifu**: playful anime lines about your tokens (*ne, mou, yatta, ganbatte~*). **Android**: calm, formal status reports. |
+| **Name / what she calls you** | Any name. The default is *Senpai*. |
+| **Island icon** | Upload any square image (PNG, JPG, WebP, GIF). |
+| **2D character** | Upload a portrait. A transparent PNG works best. |
+| **3D character** | Upload your own **GLB or VRM** model, up to 64 MB. She floats, turns toward your mouse, spins when clicked and glows in the colour of her mood. |
+| **Voice** | Windows speech, or **your own ElevenLabs voice**: paste your API key (stored in Windows Credential Manager), load your voices and pick one. Repeated lines are cached to save credits. |
+| **Local LLM lines** | Let a local model write her lines (see below). |
 
-There is no automatic feed for Claude, Cursor or xAI yet. For those, paste the announcement post. Claude's 2026-09-22 reset post is preloaded.
+Uploaded files are copied into the app's data folder and never leave your PC.
 
-Past resets for ChatGPT / Codex are rebuilt from Codex session logs on first run. Those logs mix every account used on the machine, and they record the plan but not the account. So each plan gets its own track, and an early reset from the logs that matches no announcement may just be a switch between two accounts on the same plan. Live detection skips account switches.
+### Local LLM voice (optional)
+1. Install [Ollama](https://ollama.com), then run `ollama pull qwen3.5:4b` ([Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B), Apache-2.0, about 5 GB RAM).
+2. Open **Settings**, turn on **Use a local LLM**, and press **Test model**.
 
-## Local LLM voice (optional)
+Any OpenAI-compatible server also works, such as `llama-server` on `http://localhost:8080`. Any reply that contains a number not in your usage data is thrown out, and a template line is used instead. She never makes up numbers.
 
-Her lines are built from templates by default. To have a local model write them:
+## Install
 
-1. Install [Ollama](https://ollama.com), then run `ollama pull qwen3.5:4b`. This is [Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B): Apache-2.0, about 5 GB RAM.
-2. Open Settings, turn on **Use a local LLM**, then press **Test model**.
-
-On low-RAM PCs, use `qwen3.5:2b` instead. Any OpenAI-compatible server also works, such as `llama-server` on `http://localhost:8080`. Replies that contain a number not in the usage data are thrown out, and a template line is used instead.
-
-## 3D character
-
-`public/models/kosmos.glb` was generated on this PC with open Hugging Face models. The scripts live in `D:\AI\kosmos-3d` and run in the `D:\AI\envs\hunyuan3d2mv` Python environment:
-
-1. `gen_ref.py front 303` and `gen_ref.py back 303` make full-body front and back views with [Animagine XL 4.0](https://huggingface.co/cagliostrolab/animagine-xl-4.0).
-2. `make_mesh.py 303` removes the backgrounds and builds the shape with [Hunyuan3D-2mv](https://huggingface.co/tencent/Hunyuan3D-2mv). This takes about 90 s on an RTX 3090. The mesh is then reduced to 60k faces.
-3. `texture.py` paints the mesh by projecting the front art onto forward-facing faces and the back art onto the rest, then writes `kosmos.glb`.
-
-In the app she breathes, floats, turns toward your mouse, nods while talking, spins when clicked and changes rim-light color with her mood. Settings has a switch back to the 2D art. Hunyuan3D's license doesn't cover use in the EU, the UK or South Korea.
-
-## Develop
+**From source** (about 5 minutes on a fresh machine):
 
 ```sh
+git clone https://github.com/leancoderkavy/waifu-usage-monitor.git
+cd waifu-usage-monitor
 npm install
-npm run tauri dev     # run with hot reload
-npm run tauri build   # installers in src-tauri/target/release/bundle
+npm run tauri build   # installers land in src-tauri/target/release/bundle
 ```
 
-Needs Node 20+, Rust stable, and the WebView2 runtime (built into Windows 11).
+Requirements: Windows 10 or 11, Node 20+, Rust stable, and the WebView2 runtime (built into Windows 11).
+
+For development: `npm run tauri dev` gives hot reload, and `npm test` plus `cargo test` (in `src-tauri`) run the tests.
+
+## Privacy
+
+- **No telemetry, no accounts, no backend.** The app talks only to the providers' own usage endpoints, the public reset feeds listed above, ElevenLabs (if you turn it on), and your local LLM.
+- Pasted keys and your ElevenLabs key go to **Windows Credential Manager**, not to disk.
+- Saved logins are encrypted with **Windows DPAPI**, so only your Windows user can read them.
+- Uploaded characters stay in `%APPDATA%\com.waifu.usagemonitor\custom\`.
+
+## Performance
+
+It is built to run all day without you noticing:
+
+- Rust backend, and the dashboard and island each load only their own code.
+- The 3D render loop, animations and polling pause while the dashboard is hidden in the tray.
+- GPU stats are cached for 10 s, and the process list is scanned only while the System tab is open.
+- The collapsed island polls hardware every 20 s.
+
+## How it compares
+
+| Project | Platform | Focus |
+| --- | --- | --- |
+| **Waifu Usage Monitor** | **Windows** tray + always-on-top island | Live plan limits for Codex, Claude, Cursor and Grok across several accounts, burn-rate projection, reset calendar, hardware monitor, companion with voice |
+| [CodexBar](https://github.com/steipete/CodexBar) | macOS menu bar | Dozens of providers, reset countdowns, spend charts, widgets |
+| [ccusage](https://github.com/ryoppippi/ccusage) | CLI | Token and cost reports from local Claude Code / Codex logs |
+| [Claude-Code-Usage-Monitor](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) | Terminal UI | Claude burn rate and limit predictions |
+| [ccstatusline](https://github.com/sirmalloc/ccstatusline) | Claude Code statusline | Usage and cost inside the Claude Code prompt |
+
+These are all great tools. Pick the one that fits your OS and workflow.
+
+## FAQ
+
+**How do I check my Claude Code usage limit on Windows?**
+Install the app and sign in to Claude Code as usual. It finds `%USERPROFILE%\.claude\.credentials.json` and shows your 5-hour session, weekly and per-model limits.
+
+**Does it track the Codex / ChatGPT weekly limit?**
+Yes. It shows the 5-hour and weekly windows, per-model limits and banked reset credits for every ChatGPT account you have signed in to Codex with.
+
+**Can it track several Claude or ChatGPT accounts?**
+Yes. Each email you sign in with gets its own card, and saved logins are renewed in the background.
+
+**Does it cost anything or send my data anywhere?**
+No. It is free and open source, and it has no telemetry. See [Privacy](#privacy).
+
+**Can I use my own anime character or VTuber model?**
+Yes. Upload a GLB or VRM model, a 2D portrait, or an island icon in **Settings → Your own character**.
+
+**What isn't covered?**
+grok.com / SuperGrok chat limits and ChatGPT web message caps. Neither has an API.
+
+## Built-in character
+
+The built-in character is fan art inspired by KOS-MOS from *Xenosaga*. It was generated with open models: [Animagine XL 4.0](https://huggingface.co/cagliostrolab/animagine-xl-4.0) drew the front and back views, and [Hunyuan3D-2mv](https://huggingface.co/tencent/Hunyuan3D-2mv) built the mesh. A custom shader projects the art onto the mesh and animates the head, hair and breathing. KOS-MOS and Xenosaga belong to their respective owners, and this project is not affiliated with them. Hunyuan3D's license doesn't cover use in the EU, the UK or South Korea. Upload your own character to replace her.
+
+## Contributing
+
+Issues and pull requests are welcome. Ideas on the roadmap:
+
+- Cost breakdowns from local Claude Code / Codex JSONL logs
+- A CLI / JSON export for terminal statuslines
+- Theme presets
+- Signed releases with auto-update
+
+## License
+
+[MIT](LICENSE). The built-in character art is fan art. See [Built-in character](#built-in-character).
+
+---
+
+<sub>Keywords: Claude Code usage monitor, Codex usage limit tracker, Cursor usage tracker, AI rate limit monitor for Windows, LLM token usage widget, Claude Max weekly limit, ChatGPT Pro Codex limits, anime desktop companion, VTuber desktop pet, Tauri app.</sub>
