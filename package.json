@@ -33,7 +33,7 @@
     "typescript": "~6.0.3",
     "vite": "^8.0.16"
   },
-  "description": "Windows tray app and always-on-top island that tracks Claude Code, Codex, Cursor and Grok usage limits, with an anime companion",
+  "description": "Windows and macOS tray app and always-on-top island that tracks Claude Code, Codex, Cursor and Grok usage limits, with an anime companion",
   "license": "MIT",
   "homepage": "https://github.com/leancoderkavy/waifu-usage-monitor#readme",
   "repository": {
@@ -51,6 +51,7 @@
     "rate-limit",
     "tauri",
     "windows",
+    "macos",
     "anime"
   ]
 }
