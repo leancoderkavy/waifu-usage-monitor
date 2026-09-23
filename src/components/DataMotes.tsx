@@ -23,7 +23,8 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
     let h = 0;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      // Soft motes gain nothing from HiDPI; 1x keeps the fill cost low.
+      const dpr = 1;
       w = canvas.clientWidth;
       h = canvas.clientHeight;
       canvas.width = w * dpr;
@@ -49,12 +50,9 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.angle);
-      ctx.globalAlpha = 0.35 + Math.abs(Math.sin(p.phase)) * 0.5;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 8;
+      const alpha = 0.35 + Math.abs(Math.sin(p.phase)) * 0.5;
       ctx.strokeStyle = color;
       ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.lineWidth = 1.5;
       const s = p.size * 0.6;
       ctx.beginPath();
       if (p.size > 10) {
@@ -64,7 +62,6 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
           ctx.lineTo(Math.cos(a) * s, Math.sin(a) * s);
         }
         ctx.closePath();
-        ctx.stroke();
       } else {
         // diamond shard
         ctx.moveTo(0, -s);
@@ -72,9 +69,16 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
         ctx.lineTo(0, s);
         ctx.lineTo(-s * 0.5, 0);
         ctx.closePath();
+        ctx.globalAlpha = alpha;
         ctx.fill();
-        ctx.stroke();
       }
+      // Cheap glow: a wide faint stroke under the crisp one, instead of shadowBlur.
+      ctx.globalAlpha = alpha * 0.25;
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
       ctx.restore();
     };
 
@@ -91,11 +95,19 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
       }
       raf = requestAnimationFrame(tick);
     };
-    tick();
+    // Stop drawing while the window is hidden (tray); resume when it shows again.
+    const onVisibility = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    if (!document.hidden) tick();
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [density, color]);
 

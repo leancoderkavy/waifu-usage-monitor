@@ -1,8 +1,10 @@
 [package]
 name = "waifu-usage-monitor"
 version = "0.1.0"
-description = "Anime usage monitor for ChatGPT, Codex, Cursor and Grok"
-authors = ["you"]
+description = "Windows tray app and usage island that tracks Claude Code, Codex, Cursor and Grok usage limits"
+authors = ["leancoderkavy"]
+license = "MIT"
+repository = "https://github.com/leancoderkavy/waifu-usage-monitor"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

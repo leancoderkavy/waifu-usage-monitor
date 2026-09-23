@@ -2,6 +2,7 @@
 //! `sysinfo`; NVIDIA GPUs are read through `nvidia-smi`, which ships with the driver.
 
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
@@ -67,15 +68,40 @@ fn field(s: &str) -> Option<f64> {
     s.trim().trim_end_matches(" %").trim_end_matches(" W").parse().ok()
 }
 
-fn gpus() -> (Vec<Gpu>, Vec<(u32, f64)>) {
+/// nvidia-smi takes tens of milliseconds to start, so its answers are reused briefly.
+const GPU_TTL: Duration = Duration::from_secs(10);
+static GPU_CACHE: Mutex<Option<(Instant, Vec<Gpu>)>> = Mutex::new(None);
+static GPU_APPS_CACHE: Mutex<Option<(Instant, Vec<(u32, f64)>)>> = Mutex::new(None);
+
+/// Returns the cached value while it is fresh, otherwise recomputes it.
+fn cached<T: Clone>(cache: &Mutex<Option<(Instant, T)>>, load: impl FnOnce() -> T) -> T {
+    let mut guard = cache.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, v)) = guard.as_ref() {
+        if at.elapsed() < GPU_TTL {
+            return v.clone();
+        }
+    }
+    let v = load();
+    *guard = Some((Instant::now(), v.clone()));
+    v
+}
+
+/// GPU list and per-process VRAM are separate nvidia-smi query modes, so they
+/// cannot share one call; each is cached and the process query only runs when needed.
+fn gpus(with_apps: bool) -> (Vec<Gpu>, Vec<(u32, f64)>) {
+    let list = cached(&GPU_CACHE, query_gpus);
+    let apps = if with_apps && !list.is_empty() { cached(&GPU_APPS_CACHE, query_gpu_apps) } else { vec![] };
+    (list, apps)
+}
+
+fn query_gpus() -> Vec<Gpu> {
     let Some(text) = nvidia_smi(&[
         "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit",
         "--format=csv,noheader,nounits",
     ]) else {
-        return (vec![], vec![]);
+        return vec![];
     };
-    let list = text
-        .lines()
+    text.lines()
         .filter_map(|l| {
             let f: Vec<&str> = l.split(',').collect();
             Some(Gpu {
@@ -88,19 +114,22 @@ fn gpus() -> (Vec<Gpu>, Vec<(u32, f64)>) {
                 power_limit_w: f.get(6).and_then(|v| field(v)),
             })
         })
-        .collect();
-    let apps = nvidia_smi(&["--query-compute-apps=pid,used_memory", "--format=csv,noheader,nounits"])
+        .collect()
+}
+
+fn query_gpu_apps() -> Vec<(u32, f64)> {
+    nvidia_smi(&["--query-compute-apps=pid,used_memory", "--format=csv,noheader,nounits"])
         .unwrap_or_default()
         .lines()
         .filter_map(|l| {
             let (pid, mem) = l.split_once(',')?;
             Some((pid.trim().parse().ok()?, field(mem)?))
         })
-        .collect();
-    (list, apps)
+        .collect()
 }
 
-pub fn stats() -> Stats {
+/// `with_procs` also scans every process for the `top` list; only the System tab needs it.
+pub fn stats(with_procs: bool) -> Stats {
     let mut guard = SYS.lock().unwrap_or_else(|e| e.into_inner());
     let first = guard.is_none();
     let sys = guard.get_or_insert_with(System::new);
@@ -111,18 +140,20 @@ pub fn stats() -> Stats {
         sys.refresh_cpu_usage();
     }
     sys.refresh_memory();
-    sys.refresh_processes_specifics(
-        ProcessesToUpdate::All,
-        true,
-        ProcessRefreshKind::nothing().with_cpu().with_memory(),
-    );
+    if with_procs {
+        sys.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing().with_cpu().with_memory(),
+        );
+    }
 
-    let (gpus, gpu_apps) = gpus();
+    let (gpus, gpu_apps) = gpus(with_procs);
     let cpu_count = sys.cpus().len().max(1) as f64;
 
     // Merge processes by name so e.g. 30 browser helpers show as one row.
     let mut merged: std::collections::HashMap<String, Proc> = std::collections::HashMap::new();
-    for (pid, p) in sys.processes() {
+    for (pid, p) in sys.processes().iter().filter(|_| with_procs) {
         let name = p.name().to_string_lossy().trim_end_matches(".exe").to_string();
         let gpu = gpu_apps.iter().find(|(id, _)| *id == pid.as_u32()).map(|(_, m)| *m);
         let e = merged.entry(name.clone()).or_insert(Proc { name, pid: pid.as_u32(), cpu: 0.0, mem_mb: 0.0, gpu_mem_mb: None });
@@ -157,7 +188,7 @@ pub fn stats() -> Stats {
 mod tests {
     #[test]
     fn reads_this_machine() {
-        let s = super::stats();
+        let s = super::stats(true);
         eprintln!(
             "cpu {:.0}% ({} cores, {}) ram {:.1}/{:.1} GB gpus {:?}",
             s.cpu,

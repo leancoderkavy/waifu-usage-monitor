@@ -1,0 +1,37 @@
+/* Fonts, tokens and reset shared by the dashboard and the island window. */
+@import "@fontsource/m-plus-rounded-1c/latin-400.css";
+@import "@fontsource/m-plus-rounded-1c/latin-700.css";
+@import "@fontsource/m-plus-rounded-1c/latin-800.css";
+@import "@fontsource/orbitron/latin-500.css";
+@import "@fontsource/orbitron/latin-700.css";
+
+:root {
+  --accent: #3a7bff;
+  --accent-soft: #dce8ff;
+  --accent-2: #35c7e8;
+  --red: #e8304f;
+  --ink: #1f2a44;
+  --ink-soft: #6b7896;
+  --glass: rgba(255, 255, 255, 0.7);
+  --edge: #c9d5ec;
+  --critical: #ff3b5c;
+  --hud: #35c7e8;
+  --mono: "Orbitron", "Consolas", monospace;
+  font-family: "M PLUS Rounded 1c", "Segoe UI", sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+

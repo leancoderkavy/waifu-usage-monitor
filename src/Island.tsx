@@ -1,12 +1,15 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, loadSettings } from "./api";
-import { formatReset, remaining, withoutHidden } from "./dialogue";
+import { formatReset, remaining, runsOutAt, withoutHidden } from "./dialogue";
 import { PROVIDERS, type Account, type Provider, type Report, type SystemStats } from "./types";
 import { summarizeIslandProvider } from "./island-summary";
+import Character from "./components/Character";
+import { useCustomAsset } from "./hooks/useCustomAsset";
 import "./Island.css";
 
-const Kosmos3D = lazy(() => import("./components/Kosmos3D"));
+// A still bust, not the 3D model: the portrait is small and remounts on every hover.
+const BUILT_IN_FLAT = <img className="island-portrait-art" src="/models/kosmos_bust.png" alt="" draggable={false} />;
 
 const providerOrder: Provider[] = ["codex", "claude", "cursor", "openai", "grokbot", "xai"];
 const shortName: Record<Provider, string> = { codex: "Codex", claude: "Claude", cursor: "Cursor", openai: "OpenAI", grokbot: "Grok", xai: "xAI" };
@@ -42,6 +45,17 @@ export default function Island() {
   const [error, setError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [sys, setSys] = useState<SystemStats | null>(null);
+  const [settings, setSettings] = useState(loadSettings);
+  const avatar = useCustomAsset("avatar", settings.customAssets?.avatar);
+
+  // The dashboard saves settings to localStorage; pick up name and art changes live.
+  useEffect(() => {
+    const sync = (e: StorageEvent) => {
+      if (e.key === null || e.key.endsWith("settings")) setSettings(loadSettings());
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -60,15 +74,15 @@ export default function Island() {
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(refresh, Math.max(1, loadSettings().refreshMinutes) * 60_000);
+    const timer = window.setInterval(refresh, Math.max(1, settings.refreshMinutes) * 60_000);
     const unlisten = listen("tray-refresh", refresh);
     return () => {
       window.clearInterval(timer);
       void unlisten.then((fn) => fn());
     };
-  }, [refresh]);
+  }, [refresh, settings.refreshMinutes]);
 
-  // Hardware is cheap to poll; the island only needs a coarse 5 s pulse.
+  // Hardware: a coarse 5 s pulse when expanded; collapsed only needs the hot pill, so 20 s.
   useEffect(() => {
     let alive = true;
     const load = async () => {
@@ -80,12 +94,12 @@ export default function Island() {
       }
     };
     void load();
-    const timer = window.setInterval(load, 5000);
+    const timer = window.setInterval(load, expanded ? 5000 : 20_000);
     return () => {
       alive = false;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [expanded]);
 
   const hardware = useMemo(() => sys && systemGauges(sys), [sys]);
   const hot = hardware?.filter((gauge) => gauge.hot) ?? [];
@@ -97,7 +111,7 @@ export default function Island() {
     return [summarizeIslandProvider(group, provider)];
   }), [visible]);
   const lowest = Math.min(100, ...summaries.flatMap(({ left }) => left == null ? [] : [left]));
-  const mood = lowest <= 10 ? "panic" : lowest <= 25 ? "worried" : "calm";
+  const mood = lowest <= settings.criticalAt ? "panic" : lowest <= settings.warnAt ? "worried" : "calm";
 
   const resize = (next: boolean) => {
     if (next === expanded) return;
@@ -118,8 +132,8 @@ export default function Island() {
     >
       <section className={`island ${expanded ? "island-open" : ""}`} aria-label="LLM usage island">
         <div className="island-strip">
-          <img className="island-mark" src="/models/kosmos_avatar.png" alt="" aria-hidden="true" draggable={false} />
-          <span className="island-title">KOS-MOS</span>
+          <img className="island-mark" src={avatar ?? "/models/kosmos_avatar.png"} alt="" aria-hidden="true" draggable={false} />
+          <span className="island-title">{settings.waifuName}</span>
           <div className="island-summary" aria-label="Lowest remaining allowance by provider">
             {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft }) => {
               const showClaudeWindows = provider === "claude" && sessionLeft != null && weeklyLeft != null;
@@ -152,7 +166,7 @@ export default function Island() {
         {expanded && (
           <div className="island-details">
             <header className="island-head">
-              <div><span className="island-eyebrow">KOS-MOS // USAGE MONITOR</span><h1>Your limits</h1><p>{lastChecked ? `Updated ${lastChecked.toLocaleTimeString()}` : "Waiting for first scan"}</p></div>
+              <div><span className="island-eyebrow">{settings.waifuName} // USAGE MONITOR</span><h1>Your limits</h1><p>{lastChecked ? `Updated ${lastChecked.toLocaleTimeString()}` : "Waiting for first scan"}</p></div>
               <div className="island-actions">
                 <button type="button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh usage">{loading ? "Checking…" : "↻ Refresh"}</button>
                 <button type="button" onClick={() => void api.showDashboard()}>Open dashboard ↗</button>
@@ -174,15 +188,7 @@ export default function Island() {
               <aside className="island-portrait" aria-hidden="true">
                 <div className="island-portrait-ring" />
                 <div className="island-portrait-avatar">
-                  <Suspense fallback={<img className="island-portrait-art" src="/models/kosmos_front.jpg" alt="" />}>
-                    <Kosmos3D
-                      base="/models/kosmos"
-                      mood={mood}
-                      talking={false}
-                      onPoke={() => {}}
-                      fallback={<img className="island-portrait-art" src="/models/kosmos_front.jpg" alt="" />}
-                    />
-                  </Suspense>
+                  <Character settings={{ ...settings, character3d: false }} mood={mood} talking={false} onPoke={() => {}} flat={BUILT_IN_FLAT} />
                 </div>
                 <span>{mood === "panic" ? "CRITICAL" : mood === "worried" ? "CAUTION" : "NOMINAL"}</span>
                 <small>SYSTEM ONLINE</small>
@@ -198,10 +204,11 @@ export default function Island() {
                   {!report.ok && <p className="island-error">{report.error || "Usage unavailable"}</p>}
                   {report.ok && report.meters.filter((m) => m.unit === "percent" || (m.limit ?? 0) > 0).map((meter) => {
                     const left = remaining(meter);
+                    const out = runsOutAt(meter);
                     return <div className="island-meter" key={meter.key}>
                       <div><span>{meter.label}</span><strong>{Math.round(left)}% left</strong></div>
                       <div className="island-track"><span style={{ width: `${left}%`, background: left <= 10 ? "#ff687e" : left <= 25 ? "#ffbd69" : PROVIDERS[report.provider].color }} /></div>
-                      {meter.resetsAt && <small>Resets in {formatReset(meter.resetsAt)}</small>}
+                      {meter.resetsAt && <small>Resets in {formatReset(meter.resetsAt)}{out && <b className="island-eta"> · runs out in ~{formatReset(out)} at this pace</b>}</small>}
                     </div>;
                   })}
                 </article>

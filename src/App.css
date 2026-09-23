@@ -1,39 +1,3 @@
-@import "@fontsource/m-plus-rounded-1c/latin-400.css";
-@import "@fontsource/m-plus-rounded-1c/latin-700.css";
-@import "@fontsource/m-plus-rounded-1c/latin-800.css";
-@import "@fontsource/orbitron/latin-500.css";
-@import "@fontsource/orbitron/latin-700.css";
-
-:root {
-  --accent: #3a7bff;
-  --accent-soft: #dce8ff;
-  --accent-2: #35c7e8;
-  --red: #e8304f;
-  --ink: #1f2a44;
-  --ink-soft: #6b7896;
-  --glass: rgba(255, 255, 255, 0.7);
-  --edge: #c9d5ec;
-  --critical: #ff3b5c;
-  --hud: #35c7e8;
-  --mono: "Orbitron", "Consolas", monospace;
-  font-family: "M PLUS Rounded 1c", "Segoe UI", sans-serif;
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
-  user-select: none;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
 .app {
   position: relative;
   height: 100%;
@@ -1272,7 +1236,8 @@ footer {
 .modal input:not([type]),
 .modal input[type="text"],
 .modal input[type="password"],
-.modal input[type="number"] {
+.modal input[type="number"],
+.modal select {
   padding: 9px 12px;
   border: 1px solid var(--edge);
   font: inherit;
@@ -1349,3 +1314,44 @@ footer {
   gap: 8px;
   margin-top: 18px;
 }
+
+/* Dashboard hidden to the tray: freeze every CSS animation. */
+.paused *,
+.paused *::before,
+.paused *::after {
+  animation-play-state: paused !important;
+}
+
+.meter-eta {
+  color: #e8304f;
+  font-weight: 700;
+}
+
+/* Uploaded 2D portrait: fits the character column and floats like the built-in art. */
+.custom-portrait {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: pointer;
+}
+.custom-portrait img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  animation: portrait-float 4s ease-in-out infinite;
+  filter: drop-shadow(0 12px 24px rgba(58, 123, 255, 0.25));
+}
+.custom-portrait img.talking {
+  animation: portrait-float 4s ease-in-out infinite, portrait-talk 0.35s ease-in-out infinite;
+}
+@keyframes portrait-float {
+  50% { translate: 0 -8px; }
+}
+@keyframes portrait-talk {
+  50% { scale: 1.01 0.99; }
+}
+
+.custom-upload { align-items: center; }
+.custom-upload-label { display: flex; flex: 1; flex-direction: column; gap: 2px; }
+.custom-upload-label small { opacity: 0.7; font-size: 11px; }
+.custom-upload .btn { cursor: pointer; }

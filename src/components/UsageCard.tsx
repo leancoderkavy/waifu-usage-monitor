@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { formatReset, remaining } from "../dialogue";
+import { formatReset, remaining, runsOutAt } from "../dialogue";
 import { PROVIDERS, type Account, type Meter, type Report, type Settings } from "../types";
 
 interface Props {
@@ -22,6 +22,7 @@ function MeterRow({ meter, settings, delay, onHide }: { meter: Meter; settings: 
   const hasLimit = meter.unit === "percent" || (meter.limit ?? 0) > 0;
   const left = remaining(meter);
   const reset = formatReset(meter.resetsAt);
+  const out = hasLimit ? runsOutAt(meter) : null;
   const t = hasLimit ? tone(left, settings) : "good";
 
   return (
@@ -46,7 +47,7 @@ function MeterRow({ meter, settings, delay, onHide }: { meter: Meter; settings: 
         </motion.div>
       </div>
       <div className="meter-foot">
-        <span />
+        {out ? <span className="meter-eta" title="Projected from your average pace in this window">⚡ runs out in ~{formatReset(out)}</span> : <span />}
         {reset && <span>⟳ {reset}</span>}
       </div>
     </div>

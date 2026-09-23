@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@fontsource/m-plus-rounded-1c": "^5.3.0",
@@ -31,5 +32,25 @@
     "@vitejs/plugin-react": "^6.0.2",
     "typescript": "~6.0.3",
     "vite": "^8.0.16"
-  }
+  },
+  "description": "Windows tray app and always-on-top island that tracks Claude Code, Codex, Cursor and Grok usage limits, with an anime companion",
+  "license": "MIT",
+  "homepage": "https://github.com/leancoderkavy/waifu-usage-monitor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leancoderkavy/waifu-usage-monitor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/leancoderkavy/waifu-usage-monitor/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "cursor",
+    "usage-monitor",
+    "rate-limit",
+    "tauri",
+    "windows",
+    "anime"
+  ]
 }

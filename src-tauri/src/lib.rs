@@ -1,3 +1,4 @@
+mod custom;
 mod feeds;
 mod llm;
 mod model;
@@ -5,6 +6,7 @@ mod providers;
 mod sessions;
 mod store;
 mod system;
+mod tts;
 mod vault;
 
 use std::{sync::OnceLock, time::{Duration, Instant}};
@@ -172,8 +174,31 @@ async fn list_sessions() -> Vec<sessions::Session> {
 
 /// CPU, RAM and GPU load plus the heaviest processes.
 #[tauri::command]
-async fn system_stats() -> Result<system::Stats, String> {
-    tokio::task::spawn_blocking(system::stats).await.map_err(|e| e.to_string())
+async fn system_stats(with_procs: bool) -> Result<system::Stats, String> {
+    tokio::task::spawn_blocking(move || system::stats(with_procs)).await.map_err(|e| e.to_string())
+}
+
+/// Saves an uploaded avatar, portrait or model. The file arrives as the raw
+/// request body; `kind` and `ext` come as headers so large models skip JSON.
+#[tauri::command]
+fn save_custom_asset(app: AppHandle, request: tauri::ipc::Request) -> Result<(), String> {
+    let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok()).unwrap_or_default().to_string();
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the file as raw bytes".into());
+    };
+    custom::save(&app, &header("kind"), &header("ext"), bytes).map_err(err)
+}
+
+/// The saved file for `kind`, or an empty body when there is none.
+#[tauri::command]
+fn read_custom_asset(app: AppHandle, kind: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = custom::read(&app, &kind).map_err(err)?.unwrap_or_default();
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+#[tauri::command]
+fn clear_custom_asset(app: AppHandle, kind: String) -> Result<(), String> {
+    custom::clear(&app, &kind).map_err(err)
 }
 
 #[tauri::command]
@@ -279,9 +304,16 @@ pub fn run() {
             system_stats,
             global_resets,
             inspect_post,
-            set_tray_tooltip
-            ,show_dashboard,
-            set_island_expanded
+            set_tray_tooltip,
+            show_dashboard,
+            save_custom_asset,
+            read_custom_asset,
+            clear_custom_asset,
+            set_island_expanded,
+            tts::set_elevenlabs_key,
+            tts::has_elevenlabs_key,
+            tts::elevenlabs_voices,
+            tts::elevenlabs_speak
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

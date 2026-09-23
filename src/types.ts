@@ -115,11 +115,19 @@ export interface Settings {
   /** Show the 3D model (falls back to the 2D art if it can't load). */
   character3d: boolean;
   userTitle: string;
+  /** "waifu": playful anime lines. "android": calm, formal KOS-MOS lines. */
+  personality: "waifu" | "android";
+  /** Upload time of each custom file in app data; absent means use the built-in art. */
+  customAssets: { avatar?: number; portrait?: number; model?: number };
   llm: boolean;
   llmUrl: string;
   llmModel: string;
   refreshMinutes: number;
   voice: boolean;
+  /** "system" = browser speechSynthesis, "elevenlabs" = ElevenLabs TTS. */
+  voiceEngine: "system" | "elevenlabs";
+  elevenVoiceId: string;
+  elevenModel: string;
   notify: boolean;
   warnAt: number;
   criticalAt: number;

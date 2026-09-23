@@ -75,7 +75,7 @@ body:has(.island-canvas),
 .island-portrait-ring { position: absolute; top: 26px; left: -32px; width: 186px; height: 186px; border: 1px solid rgba(58, 123, 255, .45); border-radius: 50%; box-shadow: 0 0 0 9px rgba(58, 123, 255, .04), 0 0 0 22px rgba(255, 122, 168, .04); }
 .island-portrait .waifu { position: absolute; top: 9px; left: -28px; width: 178px; max-height: none; height: 263px; pointer-events: none; }
 .island-portrait .kosmos3d { min-height: 0; }
-.island-portrait-art { position: absolute; top: 5px; left: -114px; width: 350px; max-width: none; height: auto; pointer-events: none; }
+.island-portrait-art { position: absolute; top: 10px; left: 50%; height: 250px; width: auto; max-width: none; transform: translateX(-50%); pointer-events: none; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
 .island-portrait-avatar { position: absolute; inset: 0; }
 .island-portrait > span, .island-portrait > small { position: absolute; left: 0; right: 0; display: block; text-align: center; font-family: Orbitron, sans-serif; }
 .island-portrait > span { bottom: 34px; padding: 6px 0; color: #fff; background: linear-gradient(90deg, #294b89, #3a7bff); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
@@ -102,3 +102,5 @@ body:has(.island-canvas),
 .island-meter small { display: block; margin-top: 3px; color: #7889a7; font-size: 10px; }
 .island-error { margin: 5px 0; color: #c2334a; font-size: 11px; overflow-wrap: anywhere; }
 .island-empty { padding: 25px; text-align: center; color: #6b7896; font-size: 12px; }
+.island-eta { color: #e8304f; font-weight: 700; }
+.island-portrait .custom-portrait { position: absolute; inset: 8px 4px 58px; }

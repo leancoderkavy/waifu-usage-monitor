@@ -4,6 +4,7 @@ import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import type { Mood } from "../types";
 import { HUD_COLOR } from "./Kosmos";
+import { usePageVisible } from "../hooks/usePageVisible";
 
 /**
  * The generated 3D KOS-MOS. The mesh has no skeleton or UVs, so the shader does
@@ -29,7 +30,7 @@ interface Props {
 }
 
 /** Shows `fallback` if anything inside throws (missing file, bad GLB, no WebGL). */
-class Guard extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+export class Guard extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
@@ -312,6 +313,8 @@ export default function Kosmos3D({ base, mood, talking, onPoke, fallback }: Prop
   const [spins, setSpins] = useState(0);
   const zoom = useRef(loadZoom());
   const box = useRef<HTMLDivElement>(null);
+  // Stop the render loop entirely while the dashboard is hidden to the tray.
+  const visible = usePageVisible();
 
   // Wheel zooms her in and out. Registered by hand because React's wheel
   // listener is passive and can't stop the page from scrolling.
@@ -351,8 +354,9 @@ export default function Kosmos3D({ base, mood, talking, onPoke, fallback }: Prop
         <Rings mood={mood} />
         <Canvas
           camera={{ position: [0, FULL.y, FULL.dist], fov: 32 }}
-          gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
-          dpr={[1, 1.75]}
+          gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
+          dpr={[1, 1.25]}
+          frameloop={visible ? "always" : "never"}
         >
           <CameraRig zoom={zoom} />
           <Lights />

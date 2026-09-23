@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { listen } from "@tauri-apps/api/event";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { api, loadSettings, loadWatchedPosts, saveSettings, saveWatchedPosts } from "./api";
@@ -9,7 +9,9 @@ import {
   llmFacts,
   llmSystem,
   moodFor,
-  PET_LINES,
+  petLines,
+  announcementLine,
+  bootLine,
   sessionLine,
   hardwareLine,
   withoutHidden,
@@ -18,10 +20,12 @@ import {
   worstMeter,
 } from "./dialogue";
 import { allEvents, backfill, needsBackfill, recordAnnouncements, recordReports } from "./history";
-import { PROVIDERS, type Account, type Announcement, type Mood, type Report, type Session, type Settings, type SystemStats } from "./types";
-import Kosmos, { HUD_COLOR } from "./components/Kosmos";
+import type { Account, Mood, Report, Session, Settings, SystemStats } from "./types";
+import { HUD_COLOR } from "./components/Kosmos";
+import Character from "./components/Character";
 import SpeechBubble from "./components/SpeechBubble";
 import DataMotes from "./components/DataMotes";
+import { usePageVisible } from "./hooks/usePageVisible";
 import TitleBar from "./components/TitleBar";
 import UsageCard from "./components/UsageCard";
 import AccountEditor from "./components/AccountEditor";
@@ -32,25 +36,68 @@ import SystemPanel, { type Sample as SysSample } from "./components/SystemPanel"
 import "./App.css";
 
 // three.js is large; load the 3D character only when it is shown.
-const Kosmos3D = lazy(() => import("./components/Kosmos3D"));
 
 const ALERTED_KEY = "kosmos.alerted";
 const FEED_MINUTES = 15;
 const LLM_OFFERED_KEY = "kosmos.llmOffered";
 
-function announcementLine(a: Announcement, title: string): string {
-  const who = PROVIDERS[a.provider].name;
-  if (a.status !== "confirmed") return `Intel received. ${who} has signalled an upcoming global reset, ${title}.`;
-  return a.resetType === "banked"
-    ? `Global event detected. ${who} has issued a banked reset to all eligible accounts. You may use it when needed, ${title}.`
-    : `Global event detected. ${who} has reset usage limits for all users. Reserves restored.`;
+// ElevenLabs playback: one reused <audio>, plus a small cache of recent lines
+// (keyed by voice+model+text) so repeated chatter does not spend credits.
+const TTS_CACHE_MAX = 20;
+const ttsCache = new Map<string, ArrayBuffer>();
+let ttsAudio: HTMLAudioElement | null = null;
+let ttsUrl: string | null = null;
+let ttsSeq = 0;
+
+function stopAudio() {
+  if (ttsAudio) {
+    ttsAudio.pause();
+    ttsAudio.removeAttribute("src");
+  }
+  if (ttsUrl) {
+    URL.revokeObjectURL(ttsUrl);
+    ttsUrl = null;
+  }
 }
 
-function speak(text: string) {
+async function speakEleven(text: string, s: Settings, seq: number) {
+  const key = `${s.elevenVoiceId}|${s.elevenModel}|${text}`;
+  let buf = ttsCache.get(key);
+  if (buf) {
+    ttsCache.delete(key); // refresh LRU position
+  } else {
+    buf = await api.elevenLabsSpeak(text, s.elevenVoiceId, s.elevenModel);
+  }
+  ttsCache.set(key, buf);
+  while (ttsCache.size > TTS_CACHE_MAX) ttsCache.delete(ttsCache.keys().next().value!);
+  if (seq !== ttsSeq) return; // a newer line started meanwhile
+  stopAudio();
+  ttsAudio ??= new Audio();
+  ttsUrl = URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" }));
+  ttsAudio.src = ttsUrl;
+  await ttsAudio.play();
+}
+
+function speak(text: string, s?: Settings) {
+  const seq = ++ttsSeq;
+  stopAudio();
+  window.speechSynthesis?.cancel();
+  const clean = text.replace(/[♡♥✧…]/g, " ").trim();
+  if (s?.voiceEngine === "elevenlabs" && s.elevenVoiceId && clean) {
+    speakEleven(clean, s, seq).catch((e) => {
+      console.warn("ElevenLabs TTS failed, using system voice:", e);
+      if (seq === ttsSeq) speakSystem(clean);
+    });
+    return;
+  }
+  speakSystem(clean);
+}
+
+function speakSystem(text: string) {
   const synth = window.speechSynthesis;
   if (!synth) return;
   synth.cancel();
-  const u = new SpeechSynthesisUtterance(text.replace(/[♡♥✧…]/g, " "));
+  const u = new SpeechSynthesisUtterance(text);
   const voices = synth.getVoices();
   u.voice =
     voices.find((v) => /aria|jenny|zira|female/i.test(v.name)) ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
@@ -72,11 +119,13 @@ const withTimeout = <T,>(p: Promise<T>, ms: number) =>
 type Tab = "accounts" | "sessions" | "system" | "calendar";
 
 export default function App() {
+  // Hidden to the tray: pause CSS and motion animations.
+  const visible = usePageVisible();
   const [settings, setSettingsState] = useState<Settings>(loadSettings);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);
-  const [line, setLine] = useState("System boot complete. Beginning usage analysis.");
+  const [line, setLine] = useState(() => bootLine(loadSettings()));
   const [talking, setTalking] = useState(false);
   const [editing, setEditing] = useState<Account | "new" | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -100,7 +149,7 @@ export default function App() {
 
   const say = useCallback((text: string) => {
     setLine(text);
-    if (settingsRef.current.voice) speak(text);
+    if (settingsRef.current.voice) speak(text, settingsRef.current);
   }, []);
 
   const setSettings = (s: Settings) => {
@@ -124,7 +173,7 @@ export default function App() {
           const key = `${r.accountId}|${m.key}|${m.resetsAt ?? "none"}|${level}`;
           if (alerted[key]) continue;
           alerted[key] = true;
-          const text = alertLine(r, m, level === "critical");
+          const text = alertLine(r, m, level === "critical", s);
           if (s.notify) notify(`${s.waifuName}`, text);
           if (!spoke) {
             say(text);
@@ -196,9 +245,9 @@ export default function App() {
       setHistoryTick((t) => t + 1);
       const s = settingsRef.current;
       for (const a of fresh) {
-        if (s.notify) notify(`${s.waifuName} · Global reset`, announcementLine(a, s.userTitle));
+        if (s.notify) notify(`${s.waifuName} · Global reset`, announcementLine(a, s));
       }
-      if (fresh[0]) say(announcementLine(fresh[0], s.userTitle));
+      if (fresh[0]) say(announcementLine(fresh[0], s));
     } catch (e) {
       setFeedErrors([String(e)]);
     }
@@ -279,9 +328,11 @@ export default function App() {
   }, [refresh, settings.refreshMinutes]);
 
   // Sessions refresh every 10 s while the tab is open, otherwise once a minute.
+  // Skipped while the dashboard is hidden to the tray.
   useEffect(() => {
     let alive = true;
     const load = async () => {
+      if (document.hidden) return;
       setSessionsLoading(true);
       try {
         const list = await api.listSessions();
@@ -298,12 +349,15 @@ export default function App() {
     };
   }, [tab]);
 
-  // Hardware: every 2 s on the System tab (history covers 2 min), every 5 s otherwise.
+  // Hardware: every 2 s with the process list on the System tab (history covers
+  // 2 min), every 10 s without it otherwise, and not at all while hidden.
   useEffect(() => {
     let alive = true;
+    const onSystem = tab === "system";
     const load = async () => {
+      if (document.hidden) return;
       try {
-        const s = await api.systemStats();
+        const s = await api.systemStats(onSystem);
         if (!alive) return;
         setSys(s);
         const g = s.gpus[0];
@@ -323,10 +377,12 @@ export default function App() {
       }
     };
     load();
-    const id = window.setInterval(load, tab === "system" ? 2000 : 5000);
+    const id = window.setInterval(load, onSystem ? 2000 : 10_000);
+    document.addEventListener("visibilitychange", load);
     return () => {
       alive = false;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", load);
     };
   }, [tab]);
 
@@ -335,9 +391,9 @@ export default function App() {
     const id = window.setInterval(() => {
       if (document.hidden || loading) return;
       const lines = chatterLines(withoutHidden(reports, accountsRef.current), settingsRef.current);
-      const busy = sessionLine(sessionsRef.current);
+      const busy = sessionLine(sessionsRef.current, settingsRef.current);
       if (busy) lines.push(busy);
-      const hw = hardwareLine(sysRef.current);
+      const hw = hardwareLine(sysRef.current, settingsRef.current);
       if (hw) lines.push(hw);
       say(lines[chatterIdx.current++ % lines.length]);
     }, 45_000);
@@ -352,7 +408,8 @@ export default function App() {
 
   const poke = () => {
     if (Math.random() < 0.35) {
-      say(PET_LINES[Math.floor(Math.random() * PET_LINES.length)]);
+      const pets = petLines(settings);
+      say(pets[Math.floor(Math.random() * pets.length)]);
     } else {
       const lines = chatterLines(visibleReports, settings);
       say(lines[chatterIdx.current++ % lines.length]);
@@ -383,7 +440,8 @@ export default function App() {
   const countOf = (k: string) => accountStates.filter((x) => x === k).length;
 
   return (
-    <div className={`app mood-${mood}`} style={{ "--hud": hud } as React.CSSProperties}>
+    <MotionConfig reducedMotion={visible ? "user" : "always"}>
+    <div className={`app mood-${mood}${visible ? "" : " paused"}`} style={{ "--hud": hud } as React.CSSProperties}>
       <DataMotes color={hud} density={mood === "panic" ? 60 : 36} />
       <TitleBar name={settings.waifuName} />
       <main>
@@ -399,19 +457,7 @@ export default function App() {
             <b>{mood === "panic" ? "CRITICAL" : mood === "worried" ? "CAUTION" : mood === "pouty" ? "LINK ERROR" : mood === "sleepy" ? "STANDBY" : "NOMINAL"}</b>
           </div>
           <SpeechBubble name={settings.waifuName} text={line} onTyping={setTalking} />
-          {settings.character3d ? (
-            <Suspense fallback={<Kosmos mood={mood} talking={talking} onPoke={poke} />}>
-              <Kosmos3D
-                base="/models/kosmos"
-                mood={mood}
-                talking={talking}
-                onPoke={poke}
-                fallback={<Kosmos mood={mood} talking={talking} onPoke={poke} />}
-              />
-            </Suspense>
-          ) : (
-            <Kosmos mood={mood} talking={talking} onPoke={poke} />
-          )}
+          <Character settings={settings} mood={mood} talking={talking} onPoke={poke} />
           <div className="nameplate">
             <span>{settings.waifuName}</span>
             <small>usage monitor unit</small>
@@ -574,7 +620,9 @@ export default function App() {
             settings={settings}
             onChange={setSettings}
             onClose={() => setShowSettings(false)}
-            onTestVoice={() => speak(`${settings.waifuName} online. I will monitor your usage, ${settings.userTitle}.`)}
+            onTestVoice={() =>
+              speak(`${settings.waifuName} online. I will monitor your usage, ${settings.userTitle}.`, settings)
+            }
             onTestLlm={async () => {
               try {
                 say(await api.llmLine(settings.llmUrl, settings.llmModel, llmSystem(settings), llmFacts(visibleReports, settings)));
@@ -587,5 +635,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </MotionConfig>
   );
 }
