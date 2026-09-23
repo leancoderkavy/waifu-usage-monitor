@@ -133,3 +133,65 @@ pub async fn elevenlabs_speak(
         .map_err(|e| format!("ElevenLabs audio download failed: {e}"))?;
     Ok(tauri::ipc::Response::new(bytes.to_vec()))
 }
+
+/// Only talk to a voice server on this machine: the URL comes from settings,
+/// and the text is the user's usage data.
+fn local_base(url: &str) -> Result<String, String> {
+    let parsed = reqwest::Url::parse(url.trim()).map_err(|_| "Invalid local voice URL".to_string())?;
+    let local = matches!(parsed.host_str(), Some("127.0.0.1" | "localhost" | "[::1]" | "::1"));
+    if !local || !matches!(parsed.scheme(), "http" | "https") {
+        return Err("The local voice server must run on this computer (localhost)".into());
+    }
+    Ok(parsed.as_str().trim_end_matches('/').trim_end_matches("/v1").to_string())
+}
+
+/// Speech from a local OpenAI-compatible server such as scripts/voice_server.py
+/// (Kokoro). Returns the audio bytes as sent (WAV for the bundled server).
+#[tauri::command]
+pub async fn local_tts_speak(url: String, voice: String, text: String) -> Result<tauri::ipc::Response, String> {
+    let base = local_base(&url)?;
+    let resp = http()
+        .post(format!("{base}/v1/audio/speech"))
+        .json(&json!({ "model": "kokoro", "input": text, "voice": voice, "response_format": "wav" }))
+        .send()
+        .await
+        .map_err(|_| format!("No voice server at {base}. Start it with: python scripts/voice_server.py"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Voice server {status}: {}", body.chars().take(200).collect::<String>()));
+    }
+    let bytes = resp.bytes().await.map_err(|e| format!("Voice download failed: {e}"))?;
+    Ok(tauri::ipc::Response::new(bytes.to_vec()))
+}
+
+/// Voice names the local server offers, for the settings picker.
+#[tauri::command]
+pub async fn local_tts_voices(url: String) -> Result<Vec<String>, String> {
+    let base = local_base(&url)?;
+    let v: Value = http()
+        .get(format!("{base}/v1/audio/voices"))
+        .send()
+        .await
+        .map_err(|_| format!("No voice server at {base}"))?
+        .json()
+        .await
+        .map_err(|e| format!("Unexpected reply from the voice server: {e}"))?;
+    Ok(v["voices"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+        .unwrap_or_default())
+}
+
+#[cfg(test)]
+mod local_tests {
+    use super::local_base;
+
+    #[test]
+    fn only_localhost_servers() {
+        assert_eq!(local_base("http://127.0.0.1:8880/v1/").unwrap(), "http://127.0.0.1:8880");
+        assert_eq!(local_base("http://localhost:8880").unwrap(), "http://localhost:8880");
+        assert!(local_base("https://example.com/v1").is_err());
+        assert!(local_base("file:///etc/passwd").is_err());
+    }
+}

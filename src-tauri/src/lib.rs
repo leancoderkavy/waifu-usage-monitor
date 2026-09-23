@@ -323,7 +323,9 @@ pub fn run() {
             tts::set_elevenlabs_key,
             tts::has_elevenlabs_key,
             tts::elevenlabs_voices,
-            tts::elevenlabs_speak
+            tts::elevenlabs_speak,
+            tts::local_tts_speak,
+            tts::local_tts_voices
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

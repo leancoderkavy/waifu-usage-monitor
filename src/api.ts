@@ -32,6 +32,9 @@ export const api = {
   },
   readCustomAsset: (kind: CustomKind) => invoke<ArrayBuffer>("read_custom_asset", { kind }),
   clearCustomAsset: (kind: CustomKind) => invoke("clear_custom_asset", { kind }),
+  localTtsSpeak: (url: string, voice: string, text: string) =>
+    invoke<ArrayBuffer>("local_tts_speak", { url, voice, text }),
+  localTtsVoices: (url: string) => invoke<string[]>("local_tts_voices", { url }),
   setElevenLabsKey: (key: string | null) => invoke("set_elevenlabs_key", { key }),
   hasElevenLabsKey: () => invoke<boolean>("has_elevenlabs_key"),
   elevenLabsVoices: () =>
@@ -72,6 +75,8 @@ export const DEFAULT_SETTINGS: Settings = {
   refreshMinutes: 5,
   voice: false,
   voiceEngine: "system",
+  localTtsUrl: "http://127.0.0.1:8880",
+  localVoice: "",
   elevenVoiceId: "",
   elevenModel: "eleven_flash_v2_5",
   notify: true,

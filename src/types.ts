@@ -127,7 +127,11 @@ export interface Settings {
   refreshMinutes: number;
   voice: boolean;
   /** "system" = browser speechSynthesis, "elevenlabs" = ElevenLabs TTS. */
-  voiceEngine: "system" | "elevenlabs";
+  voiceEngine: "system" | "elevenlabs" | "local";
+  /** Local OpenAI-compatible TTS server (scripts/voice_server.py). */
+  localTtsUrl: string;
+  /** Voice on that server. Empty: the current companion's own voice. */
+  localVoice: string;
   elevenVoiceId: string;
   elevenModel: string;
   notify: boolean;

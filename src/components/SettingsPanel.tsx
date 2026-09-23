@@ -117,9 +117,11 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
           onChange={(e) => set("voiceEngine", e.target.value as Settings["voiceEngine"])}
         >
           <option value="system">System voices</option>
+          <option value="local">Local waifu voices (Kokoro, free)</option>
           <option value="elevenlabs">ElevenLabs</option>
         </select>
       </label>
+      {settings.voiceEngine === "local" && <LocalVoice settings={settings} onChange={onChange} />}
       {settings.voiceEngine === "elevenlabs" && (
         <>
           <p className="help">
@@ -328,5 +330,61 @@ function CustomUpload({ kind, label, accept, hint, settings, onChange }: {
       )}
       {status && <span className="status">{status}</span>}
     </div>
+  );
+}
+
+/** Settings for the local Kokoro voice server (scripts/voice_server.py). */
+function LocalVoice({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
+  const [voices, setVoices] = useState<string[]>([]);
+  const [status, setStatus] = useState<string | null>(null);
+  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => onChange({ ...settings, [k]: v });
+  const load = async () => {
+    setStatus("Connecting…");
+    try {
+      const list = await api.localTtsVoices(settings.localTtsUrl);
+      setVoices(list);
+      setStatus(`Connected: ${list.length} voices`);
+    } catch (e) {
+      setStatus(String(e));
+    }
+  };
+  return (
+    <>
+      <p className="help">
+        Every companion has her own voice, made by blending{" "}
+        <a
+          href="https://huggingface.co/hexgrad/Kokoro-82M"
+          onClick={(e) => {
+            e.preventDefault();
+            openUrl("https://huggingface.co/hexgrad/Kokoro-82M").catch(() => {});
+          }}
+        >
+          Kokoro-82M
+        </a>{" "}
+        voices. It runs on this computer, free and offline. Start the server once with{" "}
+        <code>pip install kokoro soundfile</code> then <code>python scripts/voice_server.py</code>.
+      </p>
+      <label>
+        Server URL
+        <input value={settings.localTtsUrl} onChange={(e) => set("localTtsUrl", e.target.value)} />
+      </label>
+      <label>
+        Voice
+        <select value={settings.localVoice} onChange={(e) => set("localVoice", e.target.value)}>
+          <option value="">Match the companion ({waifuById(settings.waifu).name})</option>
+          {(voices.length ? voices : WAIFUS.map((w) => w.voice)).map((v) => (
+            <option key={v} value={v}>
+              {WAIFUS.find((w) => w.voice === v)?.name ?? v}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="row">
+        <button className="btn ghost small" onClick={load}>
+          Check server
+        </button>
+        {status && <span className="status">{status}</span>}
+      </div>
+    </>
   );
 }
