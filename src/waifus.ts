@@ -10,12 +10,15 @@ export interface WaifuPreset {
   avatar: string;
   portrait: string;
   has3d: boolean;
+  /** Her voice on the local Kokoro server (scripts/voice_server.py). */
+  voice: string;
   lines: (title: string) => string[];
 }
 
 export const WAIFUS: WaifuPreset[] = [
   {
     id: "kosmos",
+    voice: "kosmos",
     name: "KOS-MOS",
     blurb: "Android guardian. 3D model.",
     avatar: "/models/kosmos_avatar.png",
@@ -25,6 +28,7 @@ export const WAIFUS: WaifuPreset[] = [
   },
   {
     id: "sakura",
+    voice: "sakura",
     name: "Sakura",
     blurb: "Cheerful genki girl.",
     avatar: "/waifus/sakura/avatar.png",
@@ -37,6 +41,7 @@ export const WAIFUS: WaifuPreset[] = [
   },
   {
     id: "yuki",
+    voice: "yuki",
     name: "Yuki",
     blurb: "Quiet, clever kuudere.",
     avatar: "/waifus/yuki/avatar.png",
@@ -49,6 +54,7 @@ export const WAIFUS: WaifuPreset[] = [
   },
   {
     id: "akane",
+    voice: "akane",
     name: "Akane",
     blurb: "Tsundere. Cares a lot, admits nothing.",
     avatar: "/waifus/akane/avatar.png",
@@ -61,6 +67,7 @@ export const WAIFUS: WaifuPreset[] = [
   },
   {
     id: "luna",
+    voice: "luna",
     name: "Luna",
     blurb: "Sleepy night-owl gamer.",
     avatar: "/waifus/luna/avatar.png",

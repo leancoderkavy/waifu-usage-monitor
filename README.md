@@ -109,12 +109,30 @@ Pick one in **Settings**. Each has her own lines on top of the shared personalit
 | **Island icon** | Upload any square image (PNG, JPG, WebP, GIF). |
 | **2D character** | Upload a portrait. A transparent PNG works best. |
 | **3D character** | Upload your own **GLB or VRM** model, up to 64 MB. She floats, turns toward your mouse, spins when clicked and glows in the colour of her mood. |
-| **Voice** | System speech, or **your own ElevenLabs voice**: paste your API key (stored in the system keychain), load your voices and pick one. Repeated lines are cached to save credits. |
+| **Voice** | System speech, **free local waifu voices** ([below](#local-waifu-voices-free-offline)), or **your own ElevenLabs voice**: paste your API key (stored in the system keychain), load your voices and pick one. Repeated lines are cached to save credits. |
 | **Local LLM lines** | Let a local model write her lines (see below). |
 
 Uploaded files are copied into the app's data folder and never leave your computer.
 
-### Local LLM voice (optional)
+### Local waifu voices (free, offline)
+
+Each companion has her own voice, made by blending [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) voices (Apache-2.0). A touch of a Japanese voice in each English mix gives a light anime accent. Samples:
+
+| Companion | Voice | Sample |
+| --- | --- | --- |
+| KOS-MOS | calm, soft, precise | [kosmos.wav](docs/voices/kosmos.wav) |
+| Sakura | bright and quick | [sakura.wav](docs/voices/sakura.wav) |
+| Yuki | quiet, gentle | [yuki.wav](docs/voices/yuki.wav) |
+| Akane | sharp, pouty | [akane.wav](docs/voices/akane.wav) |
+| Luna | sleepy drawl | [luna.wav](docs/voices/luna.wav) |
+
+1. `pip install "kokoro>=0.9.4" soundfile` (Python 3.10–3.12; a GPU is not needed).
+2. `python scripts/voice_server.py`. The first run downloads the model (about 330 MB).
+3. In **Settings → Voice**, pick **Local waifu voices**, then press **Check server**.
+
+The server speaks the OpenAI `/v1/audio/speech` API on `http://127.0.0.1:8880`, so any client can use it. Add your own voices to `WAIFUS` in the script, or send a blend straight in, like `"voice": "af_bella*0.6+jf_alpha*0.4"`. For safety, the app only talks to a voice server on your own computer.
+
+### Local LLM lines (optional)
 1. Install [Ollama](https://ollama.com), then run `ollama pull qwen3.5:4b` ([Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B), Apache-2.0, about 5 GB RAM).
 2. Open **Settings**, turn on **Use a local LLM**, and press **Test model**.
 
