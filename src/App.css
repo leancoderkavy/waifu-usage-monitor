@@ -183,7 +183,7 @@ main {
   align-items: center;
   padding: 6px 30px;
   clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-  background: linear-gradient(90deg, #1f2a44, #2f4a8a);
+  background: linear-gradient(90deg, var(--ink), var(--accent-strong));
   color: #fff;
   border-bottom: 3px solid var(--hud);
 }
@@ -287,10 +287,10 @@ main {
   gap: 10px;
 }
 .hero-counts .ok {
-  color: #1f9fc0;
+  color: var(--accent);
 }
 .hero-counts .low {
-  color: #d98a00;
+  color: var(--warn);
 }
 .hero-counts .critical {
   color: var(--critical);
@@ -363,7 +363,7 @@ main {
 }
 .cards::-webkit-scrollbar-thumb,
 .calendar-wrap::-webkit-scrollbar-thumb {
-  background: #b9c9e8;
+  background: var(--edge-strong);
 }
 
 .card {
@@ -383,7 +383,7 @@ main {
   background: linear-gradient(180deg, var(--brand), var(--brand-glow));
 }
 .card-error {
-  border-color: #ffc2cc;
+  border-color: #ffc9d2;
 }
 .card-head {
   display: flex;
@@ -432,12 +432,12 @@ main {
   text-transform: uppercase;
 }
 .login-badge.live {
-  color: #1f9f6a;
-  background: #e2f7ee;
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 .login-badge.saved {
   color: var(--ink-soft);
-  background: #eef1f7;
+  background: var(--surface);
 }
 .plan {
   padding: 2px 10px;
@@ -462,24 +462,24 @@ main {
   padding: 5px 10px;
   font-size: 12px;
   color: var(--ink-soft);
-  background: #f1f4fb;
-  border-left: 3px solid #b8c2dc;
+  background: var(--surface);
+  border-left: 3px solid var(--edge-strong);
 }
 .bank.has {
-  color: #7a3fd6;
-  background: #f3ecff;
-  border-color: #b36bff;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
   animation: glow 2s ease-in-out infinite;
 }
 @keyframes glow {
   50% {
-    box-shadow: 0 0 14px rgba(179, 107, 255, 0.45);
+    box-shadow: 0 0 14px rgba(58, 123, 255, 0.45);
   }
 }
 .card-err {
   padding: 8px 10px;
-  background: #fff0f3;
-  color: #c2334a;
+  background: var(--danger-soft);
+  color: var(--danger);
   font-size: 12px;
   word-break: break-word;
   user-select: text;
@@ -490,7 +490,7 @@ main {
   font-size: 16px;
   font-weight: 800;
   color: var(--accent);
-  border: 2px dashed #a9bfe8;
+  border: 2px dashed var(--edge-strong);
   cursor: pointer;
   animation: breathe 2s ease-in-out infinite;
 }
@@ -582,10 +582,10 @@ main {
   font-weight: 700;
 }
 .meter.good .meter-left {
-  color: #1f9fc0;
+  color: var(--accent);
 }
 .meter.warn .meter-left {
-  color: #d98a00;
+  color: var(--warn);
 }
 .meter.critical .meter-left {
   color: var(--critical);
@@ -620,13 +620,13 @@ main {
   animation: shine 3s linear infinite;
 }
 .meter.good .meter-fill {
-  background-image: linear-gradient(90deg, #7fdcff, #35c7e8, #d4f6ff, #7fdcff);
+  background-image: linear-gradient(90deg, #8fb6ff, #3a7bff, #dce8ff, #8fb6ff);
 }
 .meter.warn .meter-fill {
-  background-image: linear-gradient(90deg, #ffd27a, #ffb13d, #ffe7b8, #ffd27a);
+  background-image: linear-gradient(90deg, #ffd27a, #e89a1c, #ffe7b8, #ffd27a);
 }
 .meter.critical .meter-fill {
-  background-image: linear-gradient(90deg, #ff8fa1, #ff3b5c, #ffc0cb, #ff8fa1);
+  background-image: linear-gradient(90deg, #ff8fa1, #e8304f, #ffc0cb, #ff8fa1);
 }
 .meter-heart {
   position: absolute;
@@ -846,10 +846,10 @@ footer {
   user-select: text;
 }
 .cal-msg.warn {
-  color: #c2334a;
+  color: var(--danger);
 }
 .cal-event .cal-ok {
-  color: #1f9f6a;
+  color: var(--accent);
   font-weight: 700;
 }
 .cal-event .banked {
@@ -860,7 +860,7 @@ footer {
   font-style: normal;
   letter-spacing: 0.12em;
   color: #fff;
-  background: #b36bff;
+  background: var(--accent);
 }
 .cal-text {
   margin: 4px 0 0;
@@ -1028,8 +1028,8 @@ footer {
   background: var(--accent-soft);
 }
 .effort-chip.sub {
-  color: #7a3fd6;
-  background: #f3ecff;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
 }
 .session-state {
   flex-shrink: 0;
@@ -1039,7 +1039,7 @@ footer {
 }
 .session-state.working,
 .session-state.loaded {
-  color: #1f9f6a;
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -1069,14 +1069,14 @@ footer {
 }
 .ring-track {
   fill: none;
-  stroke: #e3eaf7;
+  stroke: var(--surface);
   stroke-width: 8;
 }
 .ring-fill {
   fill: none;
   stroke-width: 8;
   stroke-linecap: butt;
-  filter: drop-shadow(0 0 4px rgba(53, 199, 232, 0.4));
+  filter: drop-shadow(0 0 4px rgba(58, 123, 255, 0.4));
 }
 .ring-num {
   text-anchor: middle;
@@ -1127,7 +1127,7 @@ footer {
   color: var(--ink-soft);
 }
 .hw-names .warn {
-  color: #c2334a;
+  color: var(--danger);
 }
 .cores {
   display: grid;
@@ -1302,7 +1302,7 @@ footer {
 .help {
   margin: 10px 0 0;
   padding: 10px 12px;
-  background: #eef3fc;
+  background: var(--surface);
   font-size: 12px;
   line-height: 1.5;
   color: var(--ink-soft);
@@ -1361,7 +1361,7 @@ footer {
 }
 
 .meter-eta {
-  color: #e8304f;
+  color: var(--danger);
   font-weight: 700;
 }
 

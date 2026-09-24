@@ -143,10 +143,10 @@ export const PROVIDERS: Record<
   Provider,
   { name: string; short: string; color: string; glow: string; icon: string }
 > = {
-  codex: { name: "ChatGPT / Codex", short: "ChatGPT", color: "#10a37f", glow: "#6fffd2", icon: "✦" },
-  claude: { name: "Claude", short: "Claude", color: "#d97757", glow: "#ffc2a8", icon: "✺" },
-  cursor: { name: "Cursor", short: "Cursor", color: "#7c6cff", glow: "#c3b9ff", icon: "➤" },
-  grokbot: { name: "Grok Bot", short: "Grok Bot", color: "#16161f", glow: "#9aa0ff", icon: "Ⓖ" },
-  openai: { name: "OpenAI API", short: "OpenAI API", color: "#ff9f43", glow: "#ffd29c", icon: "◈" },
-  xai: { name: "Grok / xAI", short: "Grok", color: "#3a3a52", glow: "#b7b7ff", icon: "𝕏" },
+  codex: { name: "ChatGPT / Codex", short: "ChatGPT", color: "#2a58c4", glow: "#8fb6ff", icon: "✦" },
+  claude: { name: "Claude", short: "Claude", color: "#3a7bff", glow: "#a9c6ff", icon: "✺" },
+  cursor: { name: "Cursor", short: "Cursor", color: "#5b93ff", glow: "#c2d6ff", icon: "➤" },
+  grokbot: { name: "Grok Bot", short: "Grok Bot", color: "#1f2a44", glow: "#9aa6bf", icon: "Ⓖ" },
+  openai: { name: "OpenAI API", short: "OpenAI API", color: "#7aa7ff", glow: "#dce8ff", icon: "◈" },
+  xai: { name: "Grok / xAI", short: "Grok", color: "#6b7896", glow: "#c9d5ec", icon: "𝕏" },
 };

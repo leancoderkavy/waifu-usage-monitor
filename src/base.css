@@ -6,16 +6,23 @@
 @import "@fontsource/orbitron/latin-700.css";
 
 :root {
+  /* One blue family, neutrals, and two status colours. Nothing else. */
   --accent: #3a7bff;
-  --accent-soft: #dce8ff;
-  --accent-2: #35c7e8;
-  --red: #e8304f;
+  --accent-strong: #2a58c4;
+  --accent-soft: #e3ecff;
+  --accent-2: #7aa7ff;
+  --hud: #5b93ff;
   --ink: #1f2a44;
   --ink-soft: #6b7896;
+  --surface: #eef3fc;
   --glass: rgba(255, 255, 255, 0.7);
   --edge: #c9d5ec;
-  --critical: #ff3b5c;
-  --hud: #35c7e8;
+  --edge-strong: #b3c5e6;
+  --warn: #e89a1c;
+  --danger: #e8304f;
+  --danger-soft: #ffe8ec;
+  --red: var(--danger);
+  --critical: var(--danger);
   --mono: "Orbitron", "Consolas", monospace;
   font-family: "M PLUS Rounded 1c", "Segoe UI", sans-serif;
   color: var(--ink);

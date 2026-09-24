@@ -36,7 +36,7 @@ function systemGauges(s: SystemStats): Gauge[] {
   return gauges;
 }
 
-const gaugeColor = (gauge: Gauge) => gauge.hot ? "#ff687e" : gauge.pct >= 75 ? "#ffbd69" : "#35c7e8";
+const gaugeColor = (gauge: Gauge) => gauge.hot ? "#e8304f" : gauge.pct >= 75 ? "#e89a1c" : "#5b93ff";
 
 export default function Island() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -198,7 +198,7 @@ export default function Island() {
                     const out = runsOutAt(meter);
                     return <div className="island-meter" key={meter.key}>
                       <div><span>{meter.label}</span><strong>{Math.round(left)}% left</strong></div>
-                      <div className="island-track"><span style={{ width: `${left}%`, background: left <= 10 ? "#ff687e" : left <= 25 ? "#ffbd69" : PROVIDERS[report.provider].color }} /></div>
+                      <div className="island-track"><span style={{ width: `${left}%`, background: left <= 10 ? "#e8304f" : left <= 25 ? "#e89a1c" : PROVIDERS[report.provider].color }} /></div>
                       {meter.resetsAt && <small>Resets in {formatReset(meter.resetsAt)}{out && <b className="island-eta"> · runs out in ~{formatReset(out)} at this pace</b>}</small>}
                     </div>;
                   })}
