@@ -1,9 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
+  "description": "Capability for the dashboard and the island",
   "windows": [
-    "main"
+    "main",
+    "island"
   ],
   "permissions": [
     "core:default",

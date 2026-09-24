@@ -216,14 +216,37 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+/// The dashboard is only built when opened, and closed a minute after it is
+/// hidden (see `on_window_event`): its WebView2 page costs tens of MB. The
+/// island keeps the checks, alerts and voice running meanwhile.
+const DASHBOARD_LINGER: Duration = Duration::from_secs(60);
+
+fn open_dashboard(app: &AppHandle) {
+    let window = match app.get_webview_window("main") {
+        Some(w) => w,
+        None => {
+            let Some(config) = app.config().app.windows.iter().find(|w| w.label == "main") else {
+                return;
+            };
+            match tauri::WebviewWindowBuilder::from_config(app, config).and_then(|b| b.build()) {
+                Ok(w) => w,
+                Err(e) => {
+                    eprintln!("could not open the dashboard: {e}");
+                    return;
+                }
+            }
+        }
+    };
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+    sync_page_visibility(app, "main");
+}
+
+/// Async so building the window doesn't deadlock the Windows event loop.
 #[tauri::command]
-fn show_dashboard(app: AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.unminimize();
-        let _ = w.show();
-        let _ = w.set_focus();
-    }
-    sync_page_visibility(&app, "main");
+async fn show_dashboard(app: AppHandle) {
+    open_dashboard(&app);
 }
 
 /// Windows: WebView2 doesn't notice when its window is hidden to the tray or
@@ -284,7 +307,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if args.iter().any(|a| a == "--dashboard") {
-                show_dashboard(app.clone());
+                open_dashboard(app);
             } else {
                 show_main(app);
             }
@@ -328,10 +351,7 @@ pub fn run() {
                 .build(app)?;
             // `--dashboard` opens the dashboard right away instead of only the island.
             if std::env::args().any(|a| a == "--dashboard") {
-                show_dashboard(app.handle().clone());
-            } else {
-                // Starts hidden: keep its page from rendering until it is opened.
-                sync_page_visibility(app.handle(), "main");
+                open_dashboard(app.handle());
             }
             Ok(())
         })
@@ -341,6 +361,18 @@ pub fn run() {
                 api.prevent_close();
                 let _ = window.hide();
                 sync_page_visibility(window.app_handle(), window.label());
+                // Reopening within a minute is instant; after that the page is freed.
+                if window.label() == "main" {
+                    let app = window.app_handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(DASHBOARD_LINGER).await;
+                        if let Some(w) = app.get_webview_window("main") {
+                            if !w.is_visible().unwrap_or(true) {
+                                let _ = w.destroy();
+                            }
+                        }
+                    });
+                }
             }
             // Minimize and restore both arrive as a resize.
             WindowEvent::Resized(_) if window.label() == "main" => sync_page_visibility(window.app_handle(), "main"),

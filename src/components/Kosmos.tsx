@@ -68,6 +68,16 @@ function useMouthFlap(talking: boolean) {
 }
 
 const origin = (x: number, y: number) => ({ originX: `${x}px`, originY: `${y}px`, transformBox: "view-box" as const });
+/**
+ * Same pivot for the CSS idle loops (the k-* classes in App.css). Endless loops
+ * are CSS rather than motion: motion would run them in JavaScript every frame,
+ * and CSS ones freeze with the rest of the page when the dashboard is unfocused.
+ */
+const pivot = (x: number, y: number, extra?: React.CSSProperties): React.CSSProperties => ({
+  transformOrigin: `${x}px ${y}px`,
+  transformBox: "view-box",
+  ...extra,
+});
 /** Mirrors a left-side drawing onto the right side around x = cx. */
 const mirror = (cx: number) => `translate(${2 * cx},0) scale(-1,1)`;
 
@@ -116,8 +126,7 @@ function Eye({ cx, right, mood, closed }: { cx: number; right: boolean; mood: Mo
           <circle cx={cx + 7} cy={cy - 7} r={1.2} fill="#fff" opacity={0.8} />
         </g>
         {combat && (
-          <motion.ellipse cx={cx} cy={cy + 2} rx={24} ry={25} fill="url(#kGlow)"
-            animate={{ opacity: [0.4, 0.95, 0.4] }} transition={{ repeat: Infinity, duration: 0.8 }} />
+          <ellipse className="k-glow" cx={cx} cy={cy + 2} rx={24} ry={25} fill="url(#kGlow)" />
         )}
         {/* upper lash with a small wing */}
         <path
@@ -179,12 +188,11 @@ function HeadFin({ right, hud }: { right?: boolean; hud: string }) {
       <path d="M78,158 L40,144 L34,152 L44,168 L38,192 L76,196 Z" fill="#dfe6f3" />
       <path d="M80,150 L36,132" stroke="#fff" strokeWidth={1.5} opacity={0.9} />
       <path d="M44,168 L76,172" stroke={ARMOR_EDGE} strokeWidth={1} opacity={0.7} />
-      <motion.path d="M72,160 L42,149" stroke={hud} strokeWidth={3.2} strokeLinecap="round"
-        animate={{ opacity: [1, 0.45, 1] }} transition={{ repeat: Infinity, duration: 2.4, delay: right ? 1.2 : 0 }} />
+      <path className="k-dim" d="M72,160 L42,149" stroke={hud} strokeWidth={3.2} strokeLinecap="round"
+        style={{ animationDelay: right ? "1.2s" : undefined }} />
       <path d="M72,184 L46,184" stroke={TRIM} strokeWidth={2.2} strokeLinecap="round" />
       <path d="M30,146 L25,150 L30,156" stroke={ACCENT} strokeWidth={2} fill="none" strokeLinecap="round" />
-      <motion.circle cx={58} cy={176} r={3.2} fill={hud}
-        animate={{ opacity: [1, 0.25, 1] }} transition={{ repeat: Infinity, duration: 1.6, delay: right ? 0.8 : 0 }} />
+      <circle className="k-blink" cx={58} cy={176} r={3.2} fill={hud} style={{ animationDelay: right ? "0.8s" : undefined }} />
     </g>
   );
 }
@@ -380,23 +388,22 @@ export default function Kosmos({ mood, talking, onPoke, compact = false }: Props
 
       {/* HUD rings */}
       <g opacity={0.5}>
-        <motion.circle cx={150} cy={178} r={140} fill="none" stroke={hud} strokeWidth={1.3} strokeDasharray="3 9"
-          animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 40, ease: "linear" }} style={origin(150, 178)} />
-        <motion.circle cx={150} cy={178} r={126} fill="none" stroke={hud} strokeWidth={2.6} strokeDasharray="60 30 8 30"
-          animate={{ rotate: -360 }} transition={{ repeat: Infinity, duration: mood === "panic" ? 6 : 24, ease: "linear" }}
-          style={origin(150, 178)} />
+        <circle className="k-spin" cx={150} cy={178} r={140} fill="none" stroke={hud} strokeWidth={1.3} strokeDasharray="3 9"
+          style={pivot(150, 178, { animationDuration: "40s" })} />
+        <circle className="k-spin" cx={150} cy={178} r={126} fill="none" stroke={hud} strokeWidth={2.6} strokeDasharray="60 30 8 30"
+          style={pivot(150, 178, { animationDuration: mood === "panic" ? "6s" : "24s", animationDirection: "reverse" })} />
       </g>
 
       {/* Breathing */}
-      <motion.g animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
+      <g className="k-breathe">
         {/* Back hair */}
-        <motion.g animate={{ skewX: [0, 1.1, 0] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }} style={origin(150, 64)}>
+        <g className="k-sway" style={pivot(150, 64)}>
           <path d="M66,150 Q54,80 150,58 Q246,80 234,150 L262,420 L38,420 Z" fill="url(#kBackHair)" />
           {[70, 96, 124, 176, 204, 230].map((x, i) => (
             <path key={x} d={`M${x + (x < 150 ? 8 : -8)},${150 + i * 3} Q${x + (x < 150 ? -8 : 8)},290 ${x + (x < 150 ? -14 : 14)},420`}
               stroke={HAIR_LIGHT} strokeWidth={1.4} fill="none" opacity={0.25} />
           ))}
-        </motion.g>
+        </g>
 
         {/* Body */}
         <path d="M132,236 L132,288 Q150,296 168,288 L168,236 Z" fill={SKIN_SHADE} />
@@ -426,8 +433,8 @@ export default function Kosmos({ mood, talking, onPoke, compact = false }: Props
           </g>
         ))}
         {/* chest core */}
-        <motion.circle cx={150} cy={348} r={16} fill={hud} opacity={0.25}
-          animate={{ r: [13, 24, 13], opacity: [0.4, 0.05, 0.4] }} transition={{ repeat: Infinity, duration: mood === "panic" ? 0.7 : 2.2 }} />
+        <circle className="k-core" cx={150} cy={348} r={16} fill={hud}
+          style={pivot(150, 348, { animationDuration: mood === "panic" ? "0.7s" : "2.2s" })} />
         <circle cx={150} cy={348} r={11} fill="#dfe6f3" stroke={ARMOR_EDGE} strokeWidth={1.8} />
         <circle cx={150} cy={348} r={7.5} fill="url(#kCore)" />
         <circle cx={147.5} cy={345.5} r={2} fill="#fff" opacity={0.9} />
@@ -451,18 +458,13 @@ export default function Kosmos({ mood, talking, onPoke, compact = false }: Props
 
           {/* Front side locks */}
           {[false, true].map((right) => (
-            <motion.g
-              key={String(right)}
-              animate={{ rotate: right ? [1, -1.5, 1] : [-1, 1.5, -1] }}
-              transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
-              style={origin(right ? 226 : 74, 150)}
-            >
+            <g key={String(right)} className={right ? "k-lock-r" : "k-lock-l"} style={pivot(right ? 226 : 74, 150)}>
               <g transform={right ? mirror(150) : undefined}>
                 <path d="M72,140 Q60,240 82,344 L100,338 Q86,240 94,150 Z" fill="url(#kHair)" stroke={HAIR_SHADE} strokeWidth={1.1} />
                 <path d="M80,160 Q72,250 90,336" stroke={HAIR_DEEP} strokeWidth={1} fill="none" opacity={0.45} />
                 <path d="M88,156 Q82,220 92,300" stroke={HAIR_LIGHT} strokeWidth={1.6} fill="none" opacity={0.6} />
               </g>
-            </motion.g>
+            </g>
           ))}
 
           <HeadFin hud={hud} />
@@ -470,7 +472,7 @@ export default function Kosmos({ mood, talking, onPoke, compact = false }: Props
         </motion.g>
 
         <Effects mood={shown} hud={hud} />
-      </motion.g>
+      </g>
 
       {/* Scan line sweeps while she analyses */}
       {(talking || mood === "sleepy") && (

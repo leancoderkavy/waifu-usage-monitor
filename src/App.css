@@ -33,6 +33,12 @@
     opacity: 1;
   }
 }
+/* Unfocused or untouched: a steady red glow instead of a pulse, so the warning
+   stays visible without producing a frame every refresh. */
+.app.mood-panic.idle::after {
+  animation: none;
+  opacity: 0.7;
+}
 
 .motes {
   position: absolute;
@@ -52,8 +58,9 @@
   align-items: center;
   justify-content: space-between;
   padding-left: 14px;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(10px);
+  /* Near-opaque instead of a live backdrop blur, which re-blurred everything
+     behind it on every animation frame. */
+  background: rgba(255, 255, 255, 0.82);
   border-bottom: 1px solid var(--edge);
 }
 .titlebar-title {
@@ -363,8 +370,8 @@ main {
   position: relative;
   padding: 14px 16px;
   clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
-  background: var(--glass);
-  backdrop-filter: blur(12px);
+  /* No backdrop blur: see .titlebar. */
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--edge);
   box-shadow: 0 6px 20px rgba(40, 80, 160, 0.1);
 }
@@ -1400,3 +1407,64 @@ footer {
 .waifu-choice img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--edge); }
 .waifu-choice b { font-size: 12px; }
 .waifu-choice small { font-size: 9.5px; line-height: 1.2; text-align: center; color: var(--ink-soft); }
+
+/* KOS-MOS 2D idle loops (Kosmos.tsx). CSS, so .idle and .paused freeze them. */
+.k-glow {
+  animation: k-glow 0.8s ease-in-out infinite;
+}
+@keyframes k-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.95; }
+}
+.k-dim {
+  animation: k-dim 2.4s ease-in-out infinite;
+}
+@keyframes k-dim {
+  50% { opacity: 0.45; }
+}
+.k-blink {
+  animation: k-blink 1.6s ease-in-out infinite;
+}
+@keyframes k-blink {
+  50% { opacity: 0.25; }
+}
+.k-spin {
+  animation: k-spin 24s linear infinite;
+}
+@keyframes k-spin {
+  to { rotate: 360deg; }
+}
+.k-breathe {
+  animation: k-breathe 4s ease-in-out infinite;
+}
+@keyframes k-breathe {
+  50% { translate: 0 -3px; }
+}
+.k-sway {
+  animation: k-sway 5s ease-in-out infinite;
+}
+@keyframes k-sway {
+  50% { transform: skewX(1.1deg); }
+}
+/* Was r 13 -> 24 on a radius-16 circle; scale is the same size change. */
+.k-core {
+  animation: k-core 2.2s ease-in-out infinite;
+}
+@keyframes k-core {
+  0%, 100% { scale: 0.8125; opacity: 0.4; }
+  50% { scale: 1.5; opacity: 0.05; }
+}
+.k-lock-l {
+  animation: k-lock-l 4.5s ease-in-out infinite;
+}
+@keyframes k-lock-l {
+  0%, 100% { rotate: -1deg; }
+  50% { rotate: 1.5deg; }
+}
+.k-lock-r {
+  animation: k-lock-r 4.5s ease-in-out infinite;
+}
+@keyframes k-lock-r {
+  0%, 100% { rotate: 1deg; }
+  50% { rotate: -1.5deg; }
+}
