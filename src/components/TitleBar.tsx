@@ -14,7 +14,8 @@ export default function TitleBar({ name }: { name: string }) {
         <button onClick={() => win.toggleMaximize()} title="Maximize">
           ▢
         </button>
-        <button className="close" onClick={() => win.hide()} title="Hide to tray">
+        {/* close() rather than hide(): the app turns it into a hide and pauses the page. */}
+        <button className="close" onClick={() => win.close()} title="Hide to tray">
           ✕
         </button>
       </div>

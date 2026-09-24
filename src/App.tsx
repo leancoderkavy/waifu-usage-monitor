@@ -26,7 +26,7 @@ import Character from "./components/Character";
 import { waifuById } from "./waifus";
 import SpeechBubble from "./components/SpeechBubble";
 import DataMotes from "./components/DataMotes";
-import { usePageVisible } from "./hooks/usePageVisible";
+import { FOCUSED_FPS, useFrameBudget, usePageVisible } from "./hooks/usePageVisible";
 import TitleBar from "./components/TitleBar";
 import UsageCard from "./components/UsageCard";
 import AccountEditor from "./components/AccountEditor";
@@ -130,6 +130,21 @@ type Tab = "accounts" | "sessions" | "system" | "calendar";
 export default function App() {
   // Hidden to the tray: pause CSS and motion animations.
   const visible = usePageVisible();
+  const fps = useFrameBudget();
+  // Unfocused: decorations freeze until she has your attention again.
+  const focused = fps === FOCUSED_FPS;
+  // Hidden for a while (or never opened yet): drop the 3D model, its WebGL
+  // context and the particle canvas. Alerts and refreshes keep running;
+  // everything comes back when the window shows.
+  const [dormant, setDormant] = useState(() => document.hidden);
+  useEffect(() => {
+    if (visible) {
+      setDormant(false);
+      return;
+    }
+    const t = window.setTimeout(() => setDormant(true), 30_000);
+    return () => clearTimeout(t);
+  }, [visible]);
   const [settings, setSettingsState] = useState<Settings>(loadSettings);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -449,9 +464,9 @@ export default function App() {
   const countOf = (k: string) => accountStates.filter((x) => x === k).length;
 
   return (
-    <MotionConfig reducedMotion={visible ? "user" : "always"}>
-    <div className={`app mood-${mood}${visible ? "" : " paused"}`} style={{ "--hud": hud } as React.CSSProperties}>
-      <DataMotes color={hud} density={mood === "panic" ? 60 : 36} />
+    <MotionConfig reducedMotion={focused ? "user" : "always"}>
+    <div className={`app mood-${mood}${visible ? "" : " paused"}${visible && !focused ? " idle" : ""}`} style={{ "--hud": hud } as React.CSSProperties}>
+      {!dormant && <DataMotes color={hud} density={mood === "panic" ? 60 : 36} fps={fps} />}
       <TitleBar name={settings.waifuName} />
       <main>
         <section className="stage">
@@ -466,7 +481,7 @@ export default function App() {
             <b>{mood === "panic" ? "CRITICAL" : mood === "worried" ? "CAUTION" : mood === "pouty" ? "LINK ERROR" : mood === "sleepy" ? "STANDBY" : "NOMINAL"}</b>
           </div>
           <SpeechBubble name={settings.waifuName} text={line} onTyping={setTalking} />
-          <Character settings={settings} mood={mood} talking={talking} onPoke={poke} />
+          {!dormant && <Character settings={settings} mood={mood} talking={talking} onPoke={poke} />}
           <div className="nameplate">
             <span>{settings.waifuName}</span>
             <small>usage monitor unit</small>
@@ -575,8 +590,6 @@ export default function App() {
                   <motion.button
                     className="card card-add"
                     onClick={() => setEditing("new")}
-                    animate={{ scale: [1, 1.02, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
                   >
                     ＋ Add your first account
                   </motion.button>

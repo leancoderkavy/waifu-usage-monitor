@@ -4,7 +4,7 @@ import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import type { Mood } from "../types";
 import { HUD_COLOR } from "./Kosmos";
-import { usePageVisible } from "../hooks/usePageVisible";
+import { useFrameBudget } from "../hooks/usePageVisible";
 
 /**
  * The generated 3D KOS-MOS. The mesh has no skeleton or UVs, so the shader does
@@ -207,7 +207,7 @@ function Model({ base, mood, talking, spins }: { base: string; mood: Mood; talki
     const g = root.current;
     if (!g) return;
     // Clamp so a hitch (tab switch, GC) doesn't make everything jump.
-    const dt = Math.min(rawDt, 1 / 20);
+    const dt = Math.min(rawDt, 1 / 8);
     const t = state.clock.elapsedTime;
     const m = motion.current;
     const damp = THREE.MathUtils.damp;
@@ -285,7 +285,7 @@ function loadZoom(): number {
 function CameraRig({ zoom }: { zoom: { current: number } }) {
   const current = useRef(zoom.current);
   useFrame(({ camera }, rawDt) => {
-    const dt = Math.min(rawDt, 1 / 20);
+    const dt = Math.min(rawDt, 1 / 8);
     current.current = THREE.MathUtils.damp(current.current, zoom.current, 6, dt);
     // Ease-in so the middle of the range stays on the upper body a while.
     const z = current.current;
@@ -309,12 +309,26 @@ function Rings({ mood }: { mood: Mood }) {
   );
 }
 
+/**
+ * Draws a frame `fps` times a second. Used with frameloop="demand" so an idle
+ * model doesn't redraw at the display's full refresh rate.
+ */
+export function FrameLimiter({ fps }: { fps: number }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (!fps) return;
+    const id = window.setInterval(() => invalidate(), 1000 / fps);
+    return () => clearInterval(id);
+  }, [fps, invalidate]);
+  return null;
+}
+
 export default function Kosmos3D({ base, mood, talking, onPoke, fallback }: Props) {
   const [spins, setSpins] = useState(0);
   const zoom = useRef(loadZoom());
   const box = useRef<HTMLDivElement>(null);
-  // Stop the render loop entirely while the dashboard is hidden to the tray.
-  const visible = usePageVisible();
+  // Capped frame rate, and no rendering at all while hidden to the tray.
+  const fps = useFrameBudget();
 
   // Wheel zooms her in and out. Registered by hand because React's wheel
   // listener is passive and can't stop the page from scrolling.
@@ -356,8 +370,9 @@ export default function Kosmos3D({ base, mood, talking, onPoke, fallback }: Prop
           camera={{ position: [0, FULL.y, FULL.dist], fov: 32 }}
           gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
           dpr={[1, 1.25]}
-          frameloop={visible ? "always" : "never"}
+          frameloop={fps ? "demand" : "never"}
         >
+          <FrameLimiter fps={fps} />
           <CameraRig zoom={zoom} />
           <Lights />
           <Suspense fallback={null}>

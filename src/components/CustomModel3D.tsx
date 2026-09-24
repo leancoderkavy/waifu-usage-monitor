@@ -4,8 +4,8 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { Mood } from "../types";
 import { HUD_COLOR } from "./Kosmos";
-import { Guard } from "./Kosmos3D";
-import { usePageVisible } from "../hooks/usePageVisible";
+import { FrameLimiter, Guard } from "./Kosmos3D";
+import { useFrameBudget } from "../hooks/usePageVisible";
 
 interface Props {
   /** Object URL of a user-uploaded .glb or .vrm. */
@@ -75,7 +75,7 @@ function Model({ url, mood, talking, spins }: { url: string; mood: Mood; talking
 
 export default function CustomModel3D({ url, mood, talking, onPoke, fallback }: Props) {
   const [spins, setSpins] = useState(0);
-  const visible = usePageVisible();
+  const fps = useFrameBudget();
   return (
     <Guard fallback={fallback}>
       <div
@@ -89,8 +89,9 @@ export default function CustomModel3D({ url, mood, talking, onPoke, fallback }: 
           camera={{ position: [0, 0.1, 4.2], fov: 32 }}
           gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
           dpr={[1, 1.25]}
-          frameloop={visible ? "always" : "never"}
+          frameloop={fps ? "demand" : "never"}
         >
+          <FrameLimiter fps={fps} />
           <hemisphereLight args={["#ffffff", "#c8d6ff", 1.6]} />
           <directionalLight position={[1.5, 2, 3]} intensity={1.6} />
           <Suspense fallback={null}>
