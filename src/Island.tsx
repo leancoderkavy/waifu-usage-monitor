@@ -126,11 +126,12 @@ export default function Island() {
           <img className="island-mark" src={avatar ?? waifuById(settings.waifu).avatar} alt="" aria-hidden="true" draggable={false} />
           <span className="island-title">{settings.waifuName}</span>
           <div className="island-summary" aria-label="Lowest remaining allowance by provider">
-            {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft }) => {
+            {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft, account }) => {
               const showClaudeWindows = provider === "claude" && sessionLeft != null && weeklyLeft != null;
               const description = showClaudeWindows
                 ? `Claude: ${Math.round(sessionLeft)}% remaining in 5-hour session; ${Math.round(weeklyLeft)}% remaining weekly`
-                : `${PROVIDERS[provider].name}: ${left == null ? "usage unavailable" : `${Math.round(left)}% remaining on ${limitLabel}`}`;
+                : `${PROVIDERS[provider].name}: ${left == null ? "usage unavailable" : `${Math.round(left)}% remaining on ${limitLabel}`}`
+                  + (account ? ` (best account: ${account})` : "");
               return <span className="island-pill" key={provider} title={description} aria-label={description}>
                 <i style={{ background: PROVIDERS[provider].color }} />
                 <b>{shortName[provider]}</b>
