@@ -45,13 +45,7 @@ export default function SpeechBubble({ name, text, onTyping }: Props) {
           {!done && <span className="caret">▍</span>}
         </p>
         {done && (
-          <motion.span
-            className="bubble-next"
-            animate={{ y: [0, 3, 0] }}
-            transition={{ repeat: Infinity, duration: 0.9 }}
-          >
-            ▼
-          </motion.span>
+          <span className="bubble-next">▼</span>
         )}
       </motion.div>
     </AnimatePresence>

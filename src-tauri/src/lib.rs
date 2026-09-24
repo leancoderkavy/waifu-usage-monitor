@@ -223,6 +223,38 @@ fn show_dashboard(app: AppHandle) {
         let _ = w.show();
         let _ = w.set_focus();
     }
+    sync_page_visibility(&app, "main");
+}
+
+/// Windows: WebView2 doesn't notice when its window is hidden to the tray or
+/// minimized, so the page keeps animating offscreen and `document.hidden`
+/// stays false. Tell it: a hidden WebView2 stops rendering and throttles
+/// timers, and the low memory target lets it trim caches and page memory out.
+/// Scripts keep running, so refreshes and alerts still work. No-op elsewhere.
+fn sync_page_visibility(app: &AppHandle, label: &str) {
+    #[cfg(windows)]
+    if let Some(window) = app.get_webview_window(label) {
+        let shown = window.is_visible().unwrap_or(true) && !window.is_minimized().unwrap_or(false);
+        let _ = window.with_webview(move |w| {
+            use webview2_com::Microsoft::Web::WebView2::Win32::{
+                ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+            };
+            use windows_core::Interface;
+            let level = if shown { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW };
+            // SAFETY: COM calls on the webview's own controller, run on the UI
+            // thread by with_webview. ICoreWebView2_19 needs WebView2 Runtime
+            // 114+; on older runtimes the cast fails and only visibility is set.
+            unsafe {
+                let controller = w.controller();
+                let _ = controller.SetIsVisible(shown);
+                if let Ok(core) = controller.CoreWebView2().and_then(|c| c.cast::<ICoreWebView2_19>()) {
+                    let _ = core.SetMemoryUsageTargetLevel(level);
+                }
+            }
+        });
+    }
+    #[cfg(not(windows))]
+    let _ = (app, label);
 }
 
 #[tauri::command]
@@ -250,7 +282,13 @@ fn set_island_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--dashboard") {
+                show_dashboard(app.clone());
+            } else {
+                show_main(app);
+            }
+        }))
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -288,14 +326,25 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+            // `--dashboard` opens the dashboard right away instead of only the island.
+            if std::env::args().any(|a| a == "--dashboard") {
+                show_dashboard(app.handle().clone());
+            } else {
+                // Starts hidden: keep its page from rendering until it is opened.
+                sync_page_visibility(app.handle(), "main");
+            }
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(|window, event| match event {
             // Closing hides to the tray so she keeps watching.
-            if let WindowEvent::CloseRequested { api, .. } = event {
+            WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
                 let _ = window.hide();
+                sync_page_visibility(window.app_handle(), window.label());
             }
+            // Minimize and restore both arrive as a resize.
+            WindowEvent::Resized(_) if window.label() == "main" => sync_page_visibility(window.app_handle(), "main"),
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             list_accounts,

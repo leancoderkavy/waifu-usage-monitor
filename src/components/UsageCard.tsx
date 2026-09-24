@@ -43,6 +43,7 @@ function MeterRow({ meter, settings, delay, onHide }: { meter: Meter; settings: 
           animate={{ width: `${hasLimit ? left : 100}%` }}
           transition={{ type: "spring", stiffness: 60, damping: 16, delay }}
         >
+          <span className="meter-shine" />
           <span className="meter-heart">◆</span>
         </motion.div>
       </div>

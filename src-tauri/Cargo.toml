@@ -53,3 +53,6 @@ tauri-plugin-single-instance = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+# Same versions Tauri's WebView2 layer uses, for the memory-saver call.
+webview2-com = "0.38"
+windows-core = "0.61"

@@ -11,14 +11,17 @@ interface Petal {
   phase: number;
 }
 
-/** Rising data shards on a canvas behind everything, tinted by her HUD colour. */
-export default function DataMotes({ density = 36, color = "#35c7e8" }: { density?: number; color?: string }) {
+/**
+ * Rising data shards on a canvas behind everything, tinted by her HUD colour.
+ * `fps` caps the redraw rate; 0 stops drawing (window hidden).
+ */
+export default function DataMotes({ density = 36, color = "#35c7e8", fps = 30 }: { density?: number; color?: string; fps?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const motes = useRef<Petal[]>([]);
 
   useEffect(() => {
     const canvas = ref.current!;
     const ctx = canvas.getContext("2d")!;
-    let raf = 0;
     let w = 0;
     let h = 0;
 
@@ -44,7 +47,9 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
       angle: Math.random() * Math.PI * 2,
       phase: Math.random() * Math.PI * 2,
     });
-    const petals = Array.from({ length: density }, () => spawn(true));
+    // Kept across re-runs so a frame-rate change (focus, blur) doesn't reshuffle them.
+    if (motes.current.length !== density) motes.current = Array.from({ length: density }, () => spawn(true));
+    const petals = motes.current;
 
     const draw = (p: Petal) => {
       ctx.save();
@@ -82,34 +87,36 @@ export default function DataMotes({ density = 36, color = "#35c7e8" }: { density
       ctx.restore();
     };
 
+    // A timer at `fps` instead of requestAnimationFrame, which would redraw at
+    // the display's full rate. Movement scales with elapsed time so the motes
+    // keep the same speed at any frame rate.
+    let timer = 0;
+    let last = performance.now();
     const tick = () => {
+      const now = performance.now();
+      const k = Math.min((now - last) / (1000 / 60), 6);
+      last = now;
       ctx.clearRect(0, 0, w, h);
       for (let i = 0; i < petals.length; i++) {
         const p = petals[i];
-        p.phase += 0.02;
-        p.angle += p.spin;
-        p.y -= p.speed * 0.6;
-        p.x += Math.sin(p.phase) * p.drift * 0.4;
+        p.phase += 0.02 * k;
+        p.angle += p.spin * k;
+        p.y -= p.speed * 0.6 * k;
+        p.x += Math.sin(p.phase) * p.drift * 0.4 * k;
         if (p.y < -20) petals[i] = spawn(false);
         draw(p);
       }
-      raf = requestAnimationFrame(tick);
     };
-    // Stop drawing while the window is hidden (tray); resume when it shows again.
-    const onVisibility = () => {
-      cancelAnimationFrame(raf);
-      raf = 0;
-      if (!document.hidden) tick();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    if (!document.hidden) tick();
+    if (fps > 0) {
+      tick();
+      timer = window.setInterval(tick, 1000 / fps);
+    }
 
     return () => {
-      cancelAnimationFrame(raf);
+      clearInterval(timer);
       window.removeEventListener("resize", resize);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [density, color]);
+  }, [density, color, fps]);
 
   return <canvas ref={ref} className="motes" />;
 }
