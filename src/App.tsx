@@ -1,29 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { listen } from "@tauri-apps/api/event";
-import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { api, loadSettings, loadWatchedPosts, saveSettings, saveWatchedPosts } from "./api";
+import { requestMonitor, STATE_EVENT, type MonitorState } from "./monitor";
+import { speak } from "./voice";
 import {
-  alertLine,
   chatterLines,
   llmFacts,
   llmSystem,
   moodFor,
   petLines,
-  announcementLine,
   bootLine,
   sessionLine,
   hardwareLine,
   withoutHidden,
   remaining,
-  summaryLine,
-  worstMeter,
 } from "./dialogue";
-import { allEvents, backfill, needsBackfill, recordAnnouncements, recordReports } from "./history";
+import { allEvents } from "./history";
 import type { Account, Mood, Report, Session, Settings, SystemStats } from "./types";
 import { HUD_COLOR } from "./components/Kosmos";
 import Character from "./components/Character";
-import { waifuById } from "./waifus";
 import SpeechBubble from "./components/SpeechBubble";
 import DataMotes from "./components/DataMotes";
 import { FOCUSED_FPS, useFrameBudget, usePageVisible } from "./hooks/usePageVisible";
@@ -36,102 +32,13 @@ import SessionsPanel from "./components/SessionsPanel";
 import SystemPanel, { type Sample as SysSample } from "./components/SystemPanel";
 import "./App.css";
 
-// three.js is large; load the 3D character only when it is shown.
-
-const ALERTED_KEY = "kosmos.alerted";
-const FEED_MINUTES = 15;
-const LLM_OFFERED_KEY = "kosmos.llmOffered";
-
-// Voice playback (ElevenLabs or the local Kokoro server): one reused <audio>, plus a
-// small cache of recent lines so repeated chatter does not spend credits or CPU.
-const TTS_CACHE_MAX = 20;
-const ttsCache = new Map<string, ArrayBuffer>();
-let ttsAudio: HTMLAudioElement | null = null;
-let ttsUrl: string | null = null;
-let ttsSeq = 0;
-
-function stopAudio() {
-  if (ttsAudio) {
-    ttsAudio.pause();
-    ttsAudio.removeAttribute("src");
-  }
-  if (ttsUrl) {
-    URL.revokeObjectURL(ttsUrl);
-    ttsUrl = null;
-  }
-}
-
-/** Plays one line from a TTS engine, through the cache. `key` names engine + voice + text. */
-async function speakClip(key: string, mime: string, fetch: () => Promise<ArrayBuffer>, seq: number) {
-  let buf = ttsCache.get(key);
-  if (buf) {
-    ttsCache.delete(key); // refresh LRU position
-  } else {
-    buf = await fetch();
-  }
-  ttsCache.set(key, buf);
-  while (ttsCache.size > TTS_CACHE_MAX) ttsCache.delete(ttsCache.keys().next().value!);
-  if (seq !== ttsSeq) return; // a newer line started meanwhile
-  stopAudio();
-  ttsAudio ??= new Audio();
-  ttsUrl = URL.createObjectURL(new Blob([buf], { type: mime }));
-  ttsAudio.src = ttsUrl;
-  await ttsAudio.play();
-}
-
-function speak(text: string, s?: Settings) {
-  const seq = ++ttsSeq;
-  stopAudio();
-  window.speechSynthesis?.cancel();
-  const clean = text.replace(/[♡♥✧…]/g, " ").trim();
-  const fallback = (e: unknown) => {
-    console.warn(`${s?.voiceEngine} TTS failed, using system voice:`, e);
-    if (seq === ttsSeq) speakSystem(clean);
-  };
-  if (s?.voiceEngine === "elevenlabs" && s.elevenVoiceId && clean) {
-    const key = `eleven|${s.elevenVoiceId}|${s.elevenModel}|${clean}`;
-    speakClip(key, "audio/mpeg", () => api.elevenLabsSpeak(clean, s.elevenVoiceId, s.elevenModel), seq).catch(fallback);
-    return;
-  }
-  if (s?.voiceEngine === "local" && clean) {
-    const voice = s.localVoice || waifuById(s.waifu).voice;
-    const key = `local|${voice}|${clean}`;
-    speakClip(key, "audio/wav", () => api.localTtsSpeak(s.localTtsUrl, voice, clean), seq).catch(fallback);
-    return;
-  }
-  speakSystem(clean);
-}
-
-function speakSystem(text: string) {
-  const synth = window.speechSynthesis;
-  if (!synth) return;
-  synth.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  const voices = synth.getVoices();
-  u.voice =
-    voices.find((v) => /aria|jenny|zira|female/i.test(v.name)) ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
-  // Level, slightly synthetic delivery.
-  u.pitch = 1.15;
-  u.rate = 0.95;
-  synth.speak(u);
-}
-
-async function notify(title: string, body: string) {
-  let ok = await isPermissionGranted();
-  if (!ok) ok = (await requestPermission()) === "granted";
-  if (ok) sendNotification({ title, body });
-}
-
-const withTimeout = <T,>(p: Promise<T>, ms: number) =>
-  Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
-
 type Tab = "accounts" | "sessions" | "system" | "calendar";
 
 export default function App() {
   // Hidden to the tray: pause CSS and motion animations.
   const visible = usePageVisible();
   const fps = useFrameBudget();
-  // Unfocused: decorations freeze until she has your attention again.
+  // Unfocused or untouched for a while: decorations freeze until she has your attention again.
   const focused = fps === FOCUSED_FPS;
   // Hidden for a while (or never opened yet): drop the 3D model, its WebGL
   // context and the particle canvas. Alerts and refreshes keep running;
@@ -171,9 +78,35 @@ export default function App() {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
+  // The island runs the checks, alerts and voice (monitor.ts); the dashboard
+  // shows their results and sends lines to be spoken there.
   const say = useCallback((text: string) => {
     setLine(text);
-    if (settingsRef.current.voice) speak(text, settingsRef.current);
+    void requestMonitor({ kind: "say", text });
+  }, []);
+  const refresh = useCallback(() => void requestMonitor({ kind: "refresh" }), []);
+
+  useEffect(() => {
+    const un = listen<Partial<MonitorState>>(STATE_EVENT, ({ payload: m }) => {
+      if (m.accounts) setAccounts(m.accounts);
+      if (m.reports) setReports(m.reports);
+      if (m.loading !== undefined) setLoading(m.loading);
+      if (m.checkedAt) setLastChecked(new Date(m.checkedAt));
+      if (m.feedErrors) setFeedErrors(m.feedErrors);
+      if (m.line) setLine(m.line);
+      if (m.historyVersion !== undefined) setHistoryTick(m.historyVersion);
+    });
+    void un.then(() => requestMonitor({ kind: "sync" }));
+    return () => void un.then((f) => f());
+  }, []);
+
+  // The island may change settings too (it turns the local LLM on when found).
+  useEffect(() => {
+    const sync = (e: StorageEvent) => {
+      if (e.key === null || e.key.endsWith("settings")) setSettingsState(loadSettings());
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
   }, []);
 
   const setSettings = (s: Settings) => {
@@ -181,175 +114,17 @@ export default function App() {
     saveSettings(s);
   };
 
-  /** Fires one notification per meter per threshold per reset window. */
-  const checkAlerts = useCallback(
-    (rs: Report[]) => {
-      const s = settingsRef.current;
-      const alerted: Record<string, true> = JSON.parse(localStorage.getItem(ALERTED_KEY) ?? "{}");
-      let spoke = false;
-      for (const r of rs) {
-        if (!r.ok) continue;
-        for (const m of r.meters) {
-          if (m.unit !== "percent" && !(m.limit && m.limit > 0)) continue;
-          const left = remaining(m);
-          const level = left <= s.criticalAt ? "critical" : left <= s.warnAt ? "warn" : null;
-          if (!level) continue;
-          const key = `${r.accountId}|${m.key}|${m.resetsAt ?? "none"}|${level}`;
-          if (alerted[key]) continue;
-          alerted[key] = true;
-          const text = alertLine(r, m, level === "critical", s);
-          if (s.notify) notify(`${s.waifuName}`, text);
-          if (!spoke) {
-            say(text);
-            spoke = true;
-          }
-        }
-      }
-      localStorage.setItem(ALERTED_KEY, JSON.stringify(alerted));
-      return spoke;
-    },
-    [say],
-  );
-
-  /** Template line right away is too eager when an LLM is on; try it first, fall back fast. */
-  const sayStatus = useCallback(
-    async (rs: Report[]) => {
-      const s = settingsRef.current;
-      if (s.llm) {
-        try {
-          say(await withTimeout(api.llmLine(s.llmUrl, s.llmModel, llmSystem(s), llmFacts(rs, s)), 30000));
-          return;
-        } catch (e) {
-          console.warn("LLM line rejected, using template:", e);
-        }
-      }
-      say(summaryLine(rs, s));
-    },
-    [say],
-  );
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      // New sign-ins become new cards before anything is checked.
-      const synced = await api.syncLogins();
-      setAccounts(synced.accounts);
-      for (const a of synced.added) {
-        const s = settingsRef.current;
-        const text = `New account detected: ${a.label}. Adding it to monitoring, ${s.userTitle}.`;
-        if (s.notify) notify(s.waifuName, text);
-        say(text);
-      }
-      const rs = await api.refreshAll();
-      setReports(rs);
-      setLastChecked(new Date());
-      recordReports(rs);
-      setHistoryTick((t) => t + 1);
-      const visible = withoutHidden(rs, synced.accounts);
-      if (!checkAlerts(visible)) sayStatus(visible);
-      const worst = worstMeter(visible);
-      api.setTrayTooltip(
-        worst
-          ? `${settingsRef.current.waifuName}: lowest is ${worst.report.label} ${worst.meter.label} at ${Math.round(worst.left)}%`
-          : `${settingsRef.current.waifuName} is monitoring your limits`,
-      );
-    } catch (e) {
-      say(`System fault: ${e}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [checkAlerts, say, sayStatus]);
-
-  /** Pulls announced global resets and speaks up about new ones. */
-  const pullFeeds = useCallback(async () => {
-    try {
-      const res = await api.globalResets(loadWatchedPosts());
-      setFeedErrors(res.errors);
-      const fresh = recordAnnouncements(res.announcements);
-      setHistoryTick((t) => t + 1);
-      const s = settingsRef.current;
-      for (const a of fresh) {
-        if (s.notify) notify(`${s.waifuName} · Global reset`, announcementLine(a, s));
-      }
-      if (fresh[0]) say(announcementLine(fresh[0], s));
-    } catch (e) {
-      setFeedErrors([String(e)]);
-    }
-  }, [say]);
-
   const addPost = async (url: string): Promise<string | null> => {
     try {
       const a = await api.inspectPost(url);
       const posts = loadWatchedPosts();
       if (!posts.some((p) => p.includes(a.id.replace("x:", "")))) saveWatchedPosts([...posts, a.url]);
-      await pullFeeds();
+      void requestMonitor({ kind: "feeds" });
       return null;
     } catch (e) {
       return String(e);
     }
   };
-
-  /**
-   * Turns the local voice on the first time Ollama with the model is found, and
-   * loads the model into memory so the first real line isn't a 20-45 s cold start.
-   */
-  const prepareVoice = useCallback(async () => {
-    const s = settingsRef.current;
-    if (!(await api.llmAvailable(s.llmUrl, s.llmModel))) return;
-    if (!s.llm && !localStorage.getItem(LLM_OFFERED_KEY)) {
-      localStorage.setItem(LLM_OFFERED_KEY, "1");
-      const next = { ...s, llm: true };
-      setSettingsState(next);
-      saveSettings(next);
-      settingsRef.current = next;
-      say(`Local voice module detected: ${s.llmModel}. Language synthesis online.`);
-    }
-    if (settingsRef.current.llm) {
-      api.llmLine(s.llmUrl, s.llmModel, "Reply with one word.", "Say ready.").catch(() => {});
-    }
-  }, [say]);
-
-  /** Rebuilds past resets from local logs, once per account. */
-  const runBackfill = useCallback(async (accs: Account[]) => {
-    let found = 0;
-    const done = new Set<string>();
-    for (const a of accs) {
-      const folder = a.codexHome?.trim() || "default";
-      if (a.provider !== "codex" || done.has(folder)) continue;
-      done.add(folder);
-      if (!needsBackfill(a.id) || !needsBackfill(`folder:${folder}`)) continue;
-      try {
-        found += backfill(a.id, a.provider, a.label, await api.accountHistory(a.id), `folder:${folder}`);
-      } catch (e) {
-        console.warn("backfill failed", e);
-      }
-    }
-    if (found) setHistoryTick((t) => t + 1);
-  }, []);
-
-  useEffect(() => {
-    api
-      .listAccounts()
-      .then((accs) => {
-        setAccounts(accs);
-        runBackfill(accs);
-      })
-      .then(prepareVoice)
-      .then(refresh)
-      .then(pullFeeds)
-      .catch((e) => say(`Unable to read the account registry: ${e}`));
-    const feedTimer = window.setInterval(pullFeeds, FEED_MINUTES * 60_000);
-    const un = listen("tray-refresh", () => refresh());
-    return () => {
-      clearInterval(feedTimer);
-      un.then((f) => f());
-    };
-  }, [refresh, runBackfill, pullFeeds, prepareVoice, say]);
-
-  useEffect(() => {
-    const id = window.setInterval(refresh, settings.refreshMinutes * 60_000);
-    return () => clearInterval(id);
-  }, [refresh, settings.refreshMinutes]);
 
   // Sessions refresh every 10 s while the tab is open, otherwise once a minute.
   // Skipped while the dashboard is hidden to the tray.
@@ -448,7 +223,6 @@ export default function App() {
   const saveAccount = async (a: Account, secret?: string) => {
     const accs = await api.saveAccount(a, secret);
     setAccounts(accs);
-    runBackfill(accs);
     say(`Registration confirmed. Now monitoring ${a.label}.`);
     refresh();
   };
@@ -466,7 +240,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={focused ? "user" : "always"}>
     <div className={`app mood-${mood}${visible ? "" : " paused"}${visible && !focused ? " idle" : ""}`} style={{ "--hud": hud } as React.CSSProperties}>
-      {!dormant && <DataMotes color={hud} density={mood === "panic" ? 60 : 36} fps={fps} />}
+      {!dormant && <DataMotes color={hud} density={mood === "panic" ? 60 : 36} fps={focused ? fps : 0} />}
       <TitleBar name={settings.waifuName} />
       <main>
         <section className="stage">
@@ -631,6 +405,7 @@ export default function App() {
                     setAccounts(await api.deleteAccount(editing.id));
                     setReports((rs) => rs.filter((r) => r.accountId !== editing.id));
                     say("Account removed from monitoring.");
+                    refresh();
                   }
             }
             onClose={() => setEditing(null)}

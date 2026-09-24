@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { api, loadSettings } from "./api";
+import { requestMonitor, startMonitor } from "./monitor";
 import { formatReset, remaining, runsOutAt, withoutHidden } from "./dialogue";
 import { PROVIDERS, type Account, type Provider, type Report, type SystemStats } from "./types";
 import { summarizeIslandProvider } from "./island-summary";
@@ -58,30 +58,20 @@ export default function Island() {
     return () => window.removeEventListener("storage", sync);
   }, []);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const synced = await api.syncLogins();
-      setAccounts(synced.accounts);
-      setReports(await api.refreshAll());
-      setLastChecked(new Date());
-      setError(null);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(refresh, Math.max(1, settings.refreshMinutes) * 60_000);
-    const unlisten = listen("tray-refresh", refresh);
-    return () => {
-      window.clearInterval(timer);
-      void unlisten.then((fn) => fn());
-    };
-  }, [refresh, settings.refreshMinutes]);
+  // The island is always open, so it runs the usage checks, alerts and voice
+  // for the whole app (monitor.ts). The dashboard only displays the results.
+  const refresh = useCallback(() => void requestMonitor({ kind: "refresh" }), []);
+  useEffect(
+    () =>
+      startMonitor((m) => {
+        setAccounts(m.accounts);
+        setReports(m.reports);
+        setLoading(m.loading);
+        setLastChecked(m.checkedAt ? new Date(m.checkedAt) : null);
+        setError(m.error);
+      }),
+    [],
+  );
 
   // Hardware: a coarse 5 s pulse when expanded; collapsed only needs the hot pill, so 20 s.
   useEffect(() => {

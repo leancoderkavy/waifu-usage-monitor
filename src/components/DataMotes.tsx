@@ -13,7 +13,7 @@ interface Petal {
 
 /**
  * Rising data shards on a canvas behind everything, tinted by her HUD colour.
- * `fps` caps the redraw rate; 0 stops drawing (window hidden).
+ * `fps` caps the redraw rate; 0 freezes them in place.
  */
 export default function DataMotes({ density = 36, color = "#35c7e8", fps = 30 }: { density?: number; color?: string; fps?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -107,10 +107,9 @@ export default function DataMotes({ density = 36, color = "#35c7e8", fps = 30 }:
         draw(p);
       }
     };
-    if (fps > 0) {
-      tick();
-      timer = window.setInterval(tick, 1000 / fps);
-    }
+    // At 0 fps they hold still rather than vanish (resizing cleared the canvas).
+    tick();
+    if (fps > 0) timer = window.setInterval(tick, 1000 / fps);
 
     return () => {
       clearInterval(timer);
