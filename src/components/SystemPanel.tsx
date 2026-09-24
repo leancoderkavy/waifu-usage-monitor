@@ -8,7 +8,7 @@ export interface Sample {
   vram: number | null;
 }
 
-const tone = (pct: number) => (pct >= 90 ? "#ff3b5c" : pct >= 70 ? "#ffb13d" : "#35c7e8");
+const tone = (pct: number) => (pct >= 90 ? "#e8304f" : pct >= 70 ? "#e89a1c" : "#5b93ff");
 
 function Ring({ label, pct, detail }: { label: string; pct: number | null; detail: string }) {
   const r = 38;
@@ -75,9 +75,9 @@ export default function SystemPanel({ stats, history }: { stats: SystemStats | n
         {(
           [
             ["CPU", history.map((h) => h.cpu), "#3a7bff"],
-            ["RAM", history.map((h) => h.ram), "#b36bff"],
-            ["GPU", history.map((h) => h.gpu), "#10a37f"],
-            ["VRAM", history.map((h) => h.vram), "#ff9f43"],
+            ["RAM", history.map((h) => h.ram), "#8fb6ff"],
+            ["GPU", history.map((h) => h.gpu), "#2a58c4"],
+            ["VRAM", history.map((h) => h.vram), "#9aa6bf"],
           ] as const
         ).map(([label, values, color]) => (
           <div key={label} className="spark-box">

@@ -246,12 +246,12 @@ export function allEvents(reports: Report[]): ResetEvent[] {
 }
 
 export const KIND_INFO: Record<ResetKind, { label: string; color: string; icon: string }> = {
-  global: { label: "Global reset (announced)", color: "#ff4f7b", icon: "✦" },
-  teaser: { label: "Global reset teased", color: "#ff9fb3", icon: "✧" },
-  early: { label: "Early reset (this login)", color: "#ff8a3d", icon: "◇" },
-  "bank-used": { label: "Bank reset used", color: "#b36bff", icon: "◆" },
-  "bank-grant": { label: "Free bank reset granted", color: "#ffb13d", icon: "✚" },
-  "bank-expiry": { label: "Bank reset expires", color: "#8a94b8", icon: "⌛" },
-  scheduled: { label: "Scheduled reset", color: "#3d8bff", icon: "⟳" },
+  global: { label: "Global reset (announced)", color: "#e8304f", icon: "✦" },
+  teaser: { label: "Global reset teased", color: "#f28a9c", icon: "✧" },
+  early: { label: "Early reset (this login)", color: "#e89a1c", icon: "◇" },
+  "bank-used": { label: "Bank reset used", color: "#2a58c4", icon: "◆" },
+  "bank-grant": { label: "Free bank reset granted", color: "#e89a1c", icon: "✚" },
+  "bank-expiry": { label: "Bank reset expires", color: "#9aa6bf", icon: "⌛" },
+  scheduled: { label: "Scheduled reset", color: "#3a7bff", icon: "⟳" },
   upcoming: { label: "Upcoming reset", color: "#35c7e8", icon: "➤" },
 };

@@ -3,9 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Session } from "../types";
 
 const TOOL: Record<string, { name: string; color: string; icon: string }> = {
-  codex: { name: "Codex", color: "#10a37f", icon: "✦" },
-  claude: { name: "Claude Code", color: "#d97757", icon: "✺" },
-  ollama: { name: "Ollama", color: "#3a3150", icon: "◉" },
+  codex: { name: "Codex", color: "#2a58c4", icon: "✦" },
+  claude: { name: "Claude Code", color: "#3a7bff", icon: "✺" },
+  ollama: { name: "Ollama", color: "#1f2a44", icon: "◉" },
 };
 
 /** Working = wrote to its log in the last 2 minutes. Idle = within 15. */
