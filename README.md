@@ -25,7 +25,7 @@ A free, open-source tray / menu-bar app and always-on-top "dynamic island" for W
 
 Most usage trackers are macOS-only menu-bar apps or terminal tools. This one was built for Windows first and now runs on macOS too. It watches every major AI coding plan in one place and gives the numbers a personality.
 
-- **One glance, every limit.** A slim island at the top of your screen shows the tightest limit for each provider. Hover it for the full breakdown.
+- **One glance, every limit.** A slim island at the top or bottom of your screen shows the tightest limit for each provider. Hover it for the full breakdown.
 - **Know before you hit the wall.** A burn-rate projection turns "47% left" into "at this pace you run out in 2h 10m, before the reset".
 - **Several accounts, no setup.** Switch emails in Codex, Claude Code or Cursor as usual, and each login gets its own card.
 - **Reset tracking.** The calendar shows global resets announced by OpenAI, Anthropic and Cursor, early resets on your own login, and banked reset credits.
@@ -57,7 +57,7 @@ Every meter shows usage as a percentage, with no dollar amounts. The app reads t
 ## Features
 
 ### Usage island
-An always-on-top strip at the top of the screen, like a phone's dynamic island.
+An always-on-top strip at the top of the screen by default, like a phone's dynamic island. Set **Island position** to **Bottom, above taskbar** in Settings to anchor the strip at the bottom; its details then open upward.
 
 - **Collapsed:** each provider's tightest limit, plus a red warning pill only when CPU, RAM, GPU or VRAM runs hot.
 - **Hover:** hardware gauges, every account's meters with reset countdowns, and run-out projections.

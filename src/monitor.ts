@@ -13,6 +13,7 @@ import {
   worstMeter,
 } from "./dialogue";
 import { statusKey } from "./status-key";
+import { trayStatusFor } from "./tray-status";
 import { backfill, needsBackfill, recordAnnouncements, recordReports } from "./history";
 import type { Account, Report } from "./types";
 import { speak } from "./voice";
@@ -164,6 +165,7 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
   const refresh = async (manual = false) => {
     if (state.loading) return;
     window.clearTimeout(refreshTimer);
+    void api.setTrayStatus("working");
     try {
       // Reload first: the dashboard may have just added, edited or removed one.
       publish({ loading: true, accounts: await api.listAccounts() });
@@ -181,16 +183,22 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
       recordReports(rs);
       publish({ reports: rs, checkedAt: Date.now(), error: null, historyVersion: state.historyVersion + 1 });
       const shown = withoutHidden(rs, synced.accounts);
+      const settings = loadSettings();
+      const trayStatus = trayStatusFor(shown, settings.warnAt);
+      void api.setTrayStatus(trayStatus);
       if (!checkAlerts(shown)) void sayStatus(shown, manual);
       const worst = worstMeter(shown);
-      const name = loadSettings().waifuName;
+      const name = settings.waifuName;
       void api.setTrayTooltip(
-        worst
+        trayStatus === "sign-in" ? `${name}: sign-in required`
+          : trayStatus === "rate-limited" ? `${name}: provider rate limited`
+          : worst
           ? `${name}: lowest is ${worst.report.label} ${worst.meter.label} at ${Math.round(worst.left)}%`
           : `${name} is monitoring your limits`,
       );
     } catch (e) {
       publish({ error: String(e) });
+      void api.setTrayStatus(trayStatusFor([{ ok: false, error: String(e), meters: [] }], loadSettings().warnAt));
       say(`System fault: ${e}`);
     } finally {
       publish({ loading: false });

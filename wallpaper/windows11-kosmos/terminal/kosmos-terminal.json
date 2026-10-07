@@ -1,0 +1,42 @@
+{
+  "theme": "KOS-MOS // R-CORE",
+  "themes": [
+    {
+      "name": "KOS-MOS // R-CORE",
+      "window": { "applicationTheme": "dark" },
+      "tabRow": { "background": "#101936", "unfocusedBackground": "#0D1240" },
+      "tab": { "background": "#233D65", "unfocusedBackground": "#162548", "showCloseButton": "activeOnly" }
+    }
+  ],
+  "schemes": [
+    {
+      "name": "KOS-MOS // R-CORE",
+      "background": "#0B102A",
+      "foreground": "#E8F7FF",
+      "cursorColor": "#FF6B8F",
+      "selectionBackground": "#35597C",
+      "black": "#0B102A",
+      "red": "#E8304F",
+      "green": "#55D6B2",
+      "yellow": "#F8D186",
+      "blue": "#5A9FFF",
+      "purple": "#B695F4",
+      "cyan": "#35C7E8",
+      "white": "#D8EAF8",
+      "brightBlack": "#7897B8",
+      "brightRed": "#FF7490",
+      "brightGreen": "#91F2D2",
+      "brightYellow": "#FFE4A6",
+      "brightBlue": "#93C5FF",
+      "brightPurple": "#D7BCFF",
+      "brightCyan": "#BFF4FF",
+      "brightWhite": "#FFFFFF"
+    }
+  ],
+  "profiles": {
+    "defaults": {
+      "colorScheme": "KOS-MOS // R-CORE",
+      "cursorShape": "bar"
+    }
+  }
+}

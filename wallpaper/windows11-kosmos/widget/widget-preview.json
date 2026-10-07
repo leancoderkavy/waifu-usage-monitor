@@ -1,0 +1,16 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.3",
+  "body": [
+    { "type": "TextBlock", "text": "KOS-MOS // LLM LINK", "weight": "Bolder", "color": "Light", "size": "Medium", "spacing": "None" },
+    { "type": "TextBlock", "text": "DESIGN PREVIEW", "color": "Accent", "size": "Small", "spacing": "Small" },
+    { "type": "TextBlock", "text": "Usage status appears here when a widget provider is connected.", "color": "Light", "wrap": true, "spacing": "Medium" },
+    { "type": "FactSet", "facts": [
+      { "title": "Claude", "value": "Connect account" },
+      { "title": "Codex", "value": "Connect account" },
+      { "title": "Cursor", "value": "Connect account" }
+    ] },
+    { "type": "TextBlock", "text": "Open KOS-MOS to view limit details and reset times", "color": "Light", "size": "Small", "wrap": true, "spacing": "Medium" }
+  ]
+}
