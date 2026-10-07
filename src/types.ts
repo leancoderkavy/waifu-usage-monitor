@@ -137,6 +137,8 @@ export interface Settings {
   elevenVoiceId: string;
   elevenModel: string;
   notify: boolean;
+  /** Chime and popup when a limit resets. */
+  resetAlerts: boolean;
   warnAt: number;
   criticalAt: number;
 }

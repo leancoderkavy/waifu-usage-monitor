@@ -13,6 +13,7 @@ import {
   worstMeter,
 } from "./dialogue";
 import { statusKey } from "./status-key";
+import { ding, resetText, takeDueResets, trackResets, type PendingResets } from "./reset-alert";
 import { trayStatusFor } from "./tray-status";
 import { backfill, needsBackfill, recordAnnouncements, recordReports } from "./history";
 import type { Account, Report } from "./types";
@@ -58,6 +59,8 @@ export const requestMonitor = (r: MonitorRequest) => emitTo("island", REQUEST_EV
 const ALERTED_KEY = "kosmos.alerted";
 const FEED_MINUTES = 15;
 const LLM_OFFERED_KEY = "kosmos.llmOffered";
+const RESETS_KEY = "kosmos.pendingResets";
+const RESET_TICK_MS = 20_000;
 
 async function notify(title: string, body: string) {
   let ok = await isPermissionGranted();
@@ -124,6 +127,27 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
     return spoke;
   };
 
+  const loadPending = (): PendingResets => {
+    try {
+      return JSON.parse(localStorage.getItem(RESETS_KEY) ?? "{}") ?? {};
+    } catch {
+      return {};
+    }
+  };
+
+  /** Announces any meter whose reset time has arrived: chime, desktop popup, her voice. */
+  const checkResets = () => {
+    const { due, pending } = takeDueResets(loadPending(), Date.now() / 1000);
+    if (!due.length) return;
+    localStorage.setItem(RESETS_KEY, JSON.stringify(pending));
+    const s = loadSettings();
+    if (!s.resetAlerts) return;
+    const text = resetText(due, s.userTitle);
+    ding();
+    void notify(`${s.waifuName} · Reset`, text);
+    say(text);
+  };
+
   /** Template line right away is too eager when an LLM is on; try it first, fall back fast. */
   let lastStatusKey = "";
   const sayStatus = async (rs: Report[], force: boolean) => {
@@ -180,6 +204,9 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
       }
       void runBackfill(synced.accounts);
       const rs = await api.refreshAll();
+      // Announce resets that came due before this refresh moves their times forward.
+      checkResets();
+      localStorage.setItem(RESETS_KEY, JSON.stringify(trackResets(loadPending(), withoutHidden(rs, synced.accounts))));
       recordReports(rs);
       publish({ reports: rs, checkedAt: Date.now(), error: null, historyVersion: state.historyVersion + 1 });
       const shown = withoutHidden(rs, synced.accounts);
@@ -251,6 +278,7 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
   ];
 
   const feedTimer = window.setInterval(pullFeeds, FEED_MINUTES * 60_000);
+  const resetTimer = window.setInterval(checkResets, RESET_TICK_MS);
   prepareVoice()
     .catch(() => {})
     .then(() => refresh())
@@ -260,6 +288,7 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
     stopped = true;
     window.clearTimeout(refreshTimer);
     window.clearInterval(feedTimer);
+    window.clearInterval(resetTimer);
     for (const u of unlisteners) void u.then((f) => f());
   };
 }

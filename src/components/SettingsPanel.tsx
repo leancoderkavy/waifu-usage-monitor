@@ -235,6 +235,10 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
         Desktop notifications when a limit runs low
       </label>
       <label className="check">
+        <input type="checkbox" checked={settings.resetAlerts} onChange={(e) => set("resetAlerts", e.target.checked)} />
+        Chime and popup when a limit resets
+      </label>
+      <label className="check">
         <input
           type="checkbox"
           checked={autostart}

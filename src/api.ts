@@ -102,6 +102,7 @@ export const DEFAULT_SETTINGS: Settings = {
   elevenVoiceId: "",
   elevenModel: "eleven_flash_v2_5",
   notify: true,
+  resetAlerts: true,
   warnAt: 25,
   criticalAt: 10,
 };
