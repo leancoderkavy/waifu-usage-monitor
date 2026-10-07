@@ -1,6 +1,7 @@
 mod custom;
 mod feeds;
 mod llm;
+mod media;
 mod model;
 mod providers;
 mod sessions;
@@ -433,7 +434,10 @@ pub fn run() {
             tts::elevenlabs_voices,
             tts::elevenlabs_speak,
             tts::local_tts_speak,
-            tts::local_tts_voices
+            tts::local_tts_voices,
+            media::media_now,
+            media::media_control,
+            media::open_apple_music
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -2,6 +2,20 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Account, Announcement, FeedResult, Report, Sample, Session, Settings, SystemStats } from "./types";
 import type { TrayStatus } from "./tray-status";
 
+export interface NowPlaying {
+  connected: boolean;
+  playing: boolean;
+  title: string;
+  artist: string;
+  album: string;
+  key: string;
+  artwork: string | null;
+  positionMs: number;
+  durationMs: number;
+  canPrev: boolean;
+  canNext: boolean;
+}
+
 export type CustomKind = "avatar" | "portrait" | "model";
 
 export const api = {
@@ -25,6 +39,10 @@ export const api = {
   inspectPost: (url: string) => invoke<Announcement>("inspect_post", { url }),
   setTrayTooltip: (text: string) => invoke("set_tray_tooltip", { text }),
   setTrayStatus: (status: TrayStatus) => invoke("set_tray_status", { status }),
+  mediaNow: (known: string | null) => invoke<NowPlaying>("media_now", { known }),
+  mediaControl: (action: "toggle" | "next" | "prev" | "seek", seekMs?: number) =>
+    invoke("media_control", { action, seekMs: seekMs ?? null }),
+  openAppleMusic: () => invoke("open_apple_music"),
   showDashboard: () => invoke("show_dashboard"),
   setIslandExpanded: (expanded: boolean, position: Settings["islandPosition"]) =>
     invoke("set_island_expanded", { expanded, position }),

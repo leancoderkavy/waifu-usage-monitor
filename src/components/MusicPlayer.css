@@ -1,0 +1,160 @@
+.music {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 196px;
+  padding: 8px 10px 10px;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-top: 2px solid var(--hud);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  font-family: var(--mono);
+  transition: border-color 0.6s;
+}
+.music-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+}
+.music.playing .music-head span {
+  color: var(--hud);
+}
+.music-help {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--edge);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+.music-help:hover,
+.music-help:focus-visible {
+  color: var(--accent);
+  border-color: var(--hud);
+}
+.music-body {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  min-width: 0;
+}
+.music-art {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  background: var(--surface) center / cover;
+  border: 1px solid var(--edge-strong);
+}
+.music-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  justify-content: center;
+  font-family: "M PLUS Rounded 1c", "Segoe UI", sans-serif;
+}
+.music-meta strong,
+.music-meta span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.music-meta strong {
+  font-size: 12px;
+  color: var(--ink);
+}
+.music-meta span {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.music-bar {
+  height: 6px;
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  cursor: pointer;
+}
+.music-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-strong), var(--hud));
+}
+.music-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+.music-controls {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.music-controls button {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--edge);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.music-controls button:hover:not(:disabled),
+.music-controls button:focus-visible {
+  background: var(--accent-soft);
+  border-color: var(--hud);
+}
+.music-controls button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.music-controls button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.music-controls .main {
+  min-width: 44px;
+  background: var(--accent-strong);
+  color: #fff;
+}
+.music-controls .wide {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.music-empty p,
+.music-error {
+  margin: 8px 0 0;
+  font-family: "M PLUS Rounded 1c", "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+.music-error {
+  color: var(--danger);
+}
+@media (max-width: 760px) {
+  .music {
+    width: 160px;
+    top: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .music,
+  .music-controls button {
+    transition: none;
+  }
+}
