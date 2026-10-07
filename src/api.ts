@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Account, Announcement, FeedResult, Report, Sample, Session, Settings, SystemStats } from "./types";
+import type { TrayStatus } from "./tray-status";
 
 export type CustomKind = "avatar" | "portrait" | "model";
 
@@ -23,8 +24,10 @@ export const api = {
   globalResets: (tweets: string[]) => invoke<FeedResult>("global_resets", { tweets }),
   inspectPost: (url: string) => invoke<Announcement>("inspect_post", { url }),
   setTrayTooltip: (text: string) => invoke("set_tray_tooltip", { text }),
+  setTrayStatus: (status: TrayStatus) => invoke("set_tray_status", { status }),
   showDashboard: () => invoke("show_dashboard"),
-  setIslandExpanded: (expanded: boolean) => invoke("set_island_expanded", { expanded }),
+  setIslandExpanded: (expanded: boolean, position: Settings["islandPosition"]) =>
+    invoke("set_island_expanded", { expanded, position }),
   /** Copies an uploaded file into app data. Sent raw so big models skip JSON. */
   saveCustomAsset: async (kind: CustomKind, file: File) => {
     const ext = file.name.split(".").pop() ?? "";
@@ -64,6 +67,7 @@ const SETTINGS_KEY = "kosmos.settings";
 
 export const DEFAULT_SETTINGS: Settings = {
   waifuName: "KOS-MOS",
+  islandPosition: "top",
   waifu: "kosmos",
   character3d: true,
   userTitle: "Senpai",

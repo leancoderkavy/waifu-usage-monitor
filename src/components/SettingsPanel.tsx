@@ -67,6 +67,13 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
         </select>
       </label>
       <label>
+        Island position
+        <select value={settings.islandPosition} onChange={(e) => set("islandPosition", e.target.value as Settings["islandPosition"])}>
+          <option value="top">Top of screen</option>
+          <option value="bottom">Bottom, above taskbar</option>
+        </select>
+      </label>
+      <label>
         Check every {settings.refreshMinutes} min
         <input
           type="range"

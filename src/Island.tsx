@@ -103,21 +103,28 @@ export default function Island() {
   }), [visible]);
   const lowest = Math.min(100, ...summaries.flatMap(({ left }) => left == null ? [] : [left]));
   const mood = lowest <= settings.criticalAt ? "panic" : lowest <= settings.warnAt ? "worried" : "calm";
+  const islandPosition = settings.islandPosition === "bottom" ? "bottom" : "top";
+
+  useEffect(() => {
+    void api.setIslandExpanded(expanded, islandPosition);
+  }, [expanded, islandPosition]);
 
   const resize = (next: boolean) => {
     if (next === expanded) return;
     setExpanded(next);
-    void api.setIslandExpanded(next);
   };
 
   return (
     <div
-      className="island-canvas"
+      className={`island-canvas ${islandPosition === "bottom" ? "island-canvas-bottom" : ""}`}
       onMouseEnter={() => resize(true)}
       onMouseLeave={(event) => {
         // WebView2 can send a leave while the native window grows. The pointer
         // is still over the original strip, so keep the island open.
-        if (event.clientX >= 0 && event.clientX < window.innerWidth && event.clientY >= 0 && event.clientY < 54) return;
+        const inStrip = islandPosition === "bottom"
+          ? event.clientY >= window.innerHeight - 54 && event.clientY < window.innerHeight
+          : event.clientY >= 0 && event.clientY < 54;
+        if (event.clientX >= 0 && event.clientX < window.innerWidth && inStrip) return;
         resize(false);
       }}
     >
@@ -126,11 +133,12 @@ export default function Island() {
           <img className="island-mark" src={avatar ?? waifuById(settings.waifu).avatar} alt="" aria-hidden="true" draggable={false} />
           <span className="island-title">{settings.waifuName}</span>
           <div className="island-summary" aria-label="Lowest remaining allowance by provider">
-            {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft }) => {
+            {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft, account }) => {
               const showClaudeWindows = provider === "claude" && sessionLeft != null && weeklyLeft != null;
               const description = showClaudeWindows
                 ? `Claude: ${Math.round(sessionLeft)}% remaining in 5-hour session; ${Math.round(weeklyLeft)}% remaining weekly`
-                : `${PROVIDERS[provider].name}: ${left == null ? "usage unavailable" : `${Math.round(left)}% remaining on ${limitLabel}`}`;
+                : `${PROVIDERS[provider].name}: ${left == null ? "usage unavailable" : `${Math.round(left)}% remaining on ${limitLabel}`}`
+                  + (account ? ` (best account: ${account})` : "");
               return <span className="island-pill" key={provider} title={description} aria-label={description}>
                 <i style={{ background: PROVIDERS[provider].color }} />
                 <b>{shortName[provider]}</b>

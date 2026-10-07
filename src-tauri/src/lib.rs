@@ -13,6 +13,7 @@ use std::{sync::OnceLock, time::{Duration, Instant}};
 
 use model::{Account, Provider, Report, Sample};
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WindowEvent,
@@ -208,6 +209,21 @@ fn set_tray_tooltip(app: AppHandle, text: String) {
     }
 }
 
+#[tauri::command]
+fn set_tray_status(app: AppHandle, status: String) -> CmdResult<()> {
+    let bytes: &[u8] = match status.as_str() {
+        "standby" => include_bytes!("../../wallpaper/windows11-kosmos/status/standby.png"),
+        "working" => include_bytes!("../../wallpaper/windows11-kosmos/status/working.png"),
+        "warning" => include_bytes!("../../wallpaper/windows11-kosmos/status/warning.png"),
+        "sign-in" => include_bytes!("../../wallpaper/windows11-kosmos/status/sign-in.png"),
+        "rate-limited" => include_bytes!("../../wallpaper/windows11-kosmos/status/rate-limited.png"),
+        _ => return Err("unknown tray status".into()),
+    };
+    let tray = app.tray_by_id("main").ok_or("main tray icon unavailable")?;
+    let image = Image::from_bytes(bytes).map_err(|e| e.to_string())?;
+    tray.set_icon(Some(image)).map_err(|e| e.to_string())
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("island") {
         let _ = w.unminimize();
@@ -281,7 +297,10 @@ fn sync_page_visibility(app: &AppHandle, label: &str) {
 }
 
 #[tauri::command]
-fn set_island_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
+fn set_island_expanded(app: AppHandle, expanded: bool, position: String) -> Result<(), String> {
+    if position != "top" && position != "bottom" {
+        return Err("Island position must be top or bottom".into());
+    }
     let window = app.get_webview_window("island").ok_or("Island window missing")?;
     let width = 680.0;
     let height = if expanded { 520.0 } else { 54.0 };
@@ -289,14 +308,21 @@ fn set_island_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
     if let Some(monitor) = window.current_monitor().map_err(|e| e.to_string())? {
         let scale = monitor.scale_factor();
         let x = monitor.position().x as f64 / scale + (monitor.size().width as f64 / scale - width) / 2.0;
-        let y = monitor.position().y as f64 / scale;
+        let y = if position == "bottom" {
+            let work = monitor.work_area();
+            let top = work.position.y as f64 / scale;
+            let bottom = (work.position.y as f64 + work.size.height as f64) / scale;
+            (bottom - height).max(top)
+        } else {
+            monitor.position().y as f64 / scale
+        };
         // macOS: the menu bar covers the top of the screen, so start below it.
         // The work area excludes the menu bar; fall back to a typical height.
         #[cfg(target_os = "macos")]
-        let y = {
+        let y = if position == "top" {
             let top = monitor.work_area().position.y as f64 / scale;
             if top > y { top } else { y + 38.0 }
-        };
+        } else { y };
         window.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -319,14 +345,14 @@ pub fn run() {
             // macOS: live in the menu bar only, no Dock icon, like the Windows tray app.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-            set_island_expanded(app.handle().clone(), false).map_err(std::io::Error::other)?;
+            set_island_expanded(app.handle().clone(), false, "top".into()).map_err(std::io::Error::other)?;
             let show = MenuItem::with_id(app, "show", "Open", true, None::<&str>)?;
             let refresh = MenuItem::with_id(app, "refresh", "Refresh now", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &refresh, &quit])?;
 
             TrayIconBuilder::with_id("main")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(Image::from_bytes(include_bytes!("../../wallpaper/windows11-kosmos/status/standby.png"))?)
                 .tooltip("Waifu Usage Monitor")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -396,6 +422,7 @@ pub fn run() {
             global_resets,
             inspect_post,
             set_tray_tooltip,
+            set_tray_status,
             show_dashboard,
             save_custom_asset,
             read_custom_asset,
