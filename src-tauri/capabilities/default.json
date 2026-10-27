@@ -4,7 +4,8 @@
   "description": "Capability for the dashboard and the island",
   "windows": [
     "main",
-    "island"
+    "island",
+    "desktop-agents"
   ],
   "permissions": [
     "core:default",

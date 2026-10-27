@@ -86,6 +86,14 @@ Feeds are polled every 15 minutes, with no login: [codexresets.com](https://code
 - **Sessions:** Codex and Claude Code sessions from the last 24 hours, read from local logs, plus the models Ollama has loaded. Each row shows model, effort, project, branch and context size.
 - **System:** CPU, RAM, GPU and VRAM gauges with 2-minute graphs, per-thread load and the heaviest processes. GPU stats need an NVIDIA GPU (`nvidia-smi`), so macOS shows CPU and RAM only.
 
+### Walking desktop agents
+
+Recent Claude Code and Codex sessions appear as small walking companions across the desktop work area on the monitor containing the usage island. Sakura represents Claude; Yuki represents Codex. Project and model labels distinguish each session, including subagents. The transparent overlay passes all clicks to your other apps and stays out of the taskbar.
+
+Up to 12 sessions are illustrated, newest first. Activity is inferred from local logs scanned every 10 seconds: characters walk for two minutes after activity, rest until fifteen minutes, then disappear. This does not establish whether an agent process is still running. Configured secondary Claude/Codex folders are scanned too; Cursor agents are not currently supported. With reduced motion enabled in Windows, characters stay still.
+
+Use **Settings → Desktop agents** or the tray's **Show / hide desktop agents** item to toggle the overlay. The choice persists after restart. Settings includes a one-time introduction and a permanent **Desktop agents guide** replay button. Turn the feature off and on after changing monitor layout to refit the overlay.
+
 ## Pick your waifu
 
 ![The five built-in companions: KOS-MOS, Sakura, Yuki, Akane and Luna](docs/screenshots/companions.png)

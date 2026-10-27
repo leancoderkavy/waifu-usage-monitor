@@ -1,0 +1,21 @@
+html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window #root { background: transparent !important; pointer-events: none; }
+.desktop-agent-world { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.desktop-agent { position: absolute; top: 0; left: 0; width: 144px; height: 170px; --coat: #92e6ed; color: #f4f7ff; will-change: transform; }
+.desktop-agent.claude { --coat: #ffc0a0; }
+.agent-figure { position: relative; height: 113px; width: 80px; margin: 0 auto; transform: scaleX(var(--facing, 1)); }
+.agent-head { position: absolute; width: 58px; height: 58px; left: 11px; top: 0; border-radius: 48% 48% 43% 43%; border: 2px solid var(--coat); object-fit: cover; z-index: 3; }
+.agent-body { position: absolute; left: 22px; top: 49px; width: 36px; height: 40px; border-radius: 12px 12px 9px 9px; background: var(--coat); border: 2px solid #243854; z-index: 2; }
+.agent-body b { display: block; text-align: center; color: #243854; padding-top: 5px; }
+.agent-arm { position: absolute; top: 55px; width: 13px; height: 31px; border-radius: 9px; background: var(--coat); border: 2px solid #243854; transform-origin: 50% 4px; animation: agent-stride .65s ease-in-out infinite alternate; }
+.agent-arm.left { left: 12px; animation-delay: -.65s; }.agent-arm.right { right: 12px; }
+.agent-leg { position: absolute; top: 82px; width: 14px; height: 25px; border-radius: 3px 3px 7px 7px; background: #26354f; border-bottom: 7px solid var(--coat); transform-origin: 50% 0; animation: agent-stride .65s ease-in-out infinite alternate; }
+.agent-leg.left { left: 24px; }.agent-leg.right { right: 24px; animation-delay: -.65s; }
+.agent-shadow { position: absolute; left: 13px; bottom: 3px; width: 54px; height: 9px; background: #080f2440; border-radius: 50%; }
+.agent-head, .agent-body { animation: agent-bob .65s ease-in-out infinite alternate; }
+.agent-caption { background: #101a30e8; border: 1px solid var(--coat); border-radius: 8px; padding: 4px 7px; text-align: center; box-shadow: 0 3px 10px #0003; }
+.agent-caption strong, .agent-caption small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-caption strong { font-size: 10px; }.agent-caption small { font-size: 9px; color: #d1deec; }
+.resting .agent-figure * { animation: none; }.resting { opacity: .75; }
+@keyframes agent-stride { from { transform: rotate(-19deg); } to { transform: rotate(19deg); } }
+@keyframes agent-bob { to { transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) { .desktop-agent *, .desktop-agent { animation: none !important; } }
