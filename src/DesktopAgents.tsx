@@ -80,6 +80,8 @@ export default function DesktopAgents() {
           const { x, y, angle } = poseAt(walker.s, width, height);
           node.style.transform = `translate3d(${x - 36}px, ${y - 96}px, 0) rotate(${angle}deg)`;
           node.style.setProperty("--angle", String(angle));
+          // Upright tags are wide, so on the walls they need extra room to clear the head.
+          node.style.setProperty("--tag-push", `${Math.abs(Math.sin(angle * Math.PI / 180)) * 52}px`);
           node.style.setProperty("--facing", String(walker.dir));
           node.classList.toggle("idle", !still && walker.pause > 0);
         }

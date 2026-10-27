@@ -47,7 +47,7 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 .resting .agent-art { filter: saturate(.55) drop-shadow(0 2px 3px #0a122a66); }
 
 /* The name tag counter-rotates so it always reads upright, even on the walls and ceiling. */
-.agent-tag { position: absolute; left: 50%; top: -18px; display: flex; align-items: center; gap: 5px; max-width: 132px;
+.agent-tag { position: absolute; left: 50%; top: calc(-20px - var(--tag-push, 0px)); display: flex; align-items: center; gap: 5px; max-width: 132px;
   transform: translate(-50%, -50%) rotate(calc(var(--angle) * -1deg)); padding: 3px 8px 3px 6px; border-radius: 999px;
   background: #0f1a30e6; border: 1px solid color-mix(in srgb, var(--coat) 70%, transparent); color: #f4f7ff;
   box-shadow: 0 3px 10px #0004; font-family: system-ui, sans-serif; }
