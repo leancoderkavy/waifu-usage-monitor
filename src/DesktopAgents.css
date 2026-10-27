@@ -1,0 +1,71 @@
+html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window #root { background: transparent !important; pointer-events: none; }
+.desktop-agent-world { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* The foot point sits at the bottom centre; rotation turns the figure so its feet meet the screen edge. */
+.desktop-agent { position: absolute; top: 0; left: 0; width: 72px; height: 96px; transform-origin: 50% 100%; will-change: transform;
+  --coat: #7fe0ea; --coat-dark: #3aa9b8; --ink: #1d2b45; --skin: #ffe1cf; --facing: 1; --angle: 0; }
+.desktop-agent:not([style]) { visibility: hidden; }
+.desktop-agent.claude { --coat: #ffb48a; --coat-dark: #e07a4a; }
+
+.agent-art { display: block; width: 72px; height: 96px; overflow: visible; transform: scaleX(var(--facing)); transform-origin: 50% 100%;
+  filter: drop-shadow(0 1px 0 #fff6) drop-shadow(0 2px 3px #0a122a66); }
+.agent-art * { transform-box: view-box; }
+.agent-shadow { fill: #08102466; animation: agent-shadow .3s ease-in-out infinite alternate; transform-origin: 36px 93px; }
+.agent-coat { fill: var(--coat); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+.agent-trim { fill: none; stroke: var(--coat-dark); stroke-width: 1.6; stroke-linecap: round; }
+.agent-emblem { font: 700 8px/1 system-ui, sans-serif; fill: var(--ink); text-anchor: middle; }
+.agent-leg rect { fill: #2c3c5c; stroke: var(--ink); stroke-width: 1.4; }
+.agent-leg .boot { fill: var(--coat-dark); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+.agent-leg.back rect, .agent-arm.back rect { fill: #22304b; }
+.agent-arm rect { fill: var(--coat); stroke: var(--ink); stroke-width: 1.4; }
+.agent-arm.back rect { fill: var(--coat-dark); }
+.agent-arm .hand { fill: var(--skin); stroke: var(--ink); stroke-width: 1.2; }
+.agent-halo { fill: var(--skin); stroke: var(--coat); stroke-width: 3; }
+.agent-gear, .agent-gear rect { fill: var(--coat); stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; }
+.agent-gear path[fill="none"] { stroke: var(--coat-dark); stroke-width: 3; }
+.agent-z { font: 700 11px/1 system-ui, sans-serif; fill: #dce8ff; stroke: var(--ink); stroke-width: .6; opacity: 0; }
+
+/* Walk cycle: hips and shoulders swing in opposition, the body bobs twice per stride. */
+.agent-leg.front { transform-origin: 33px 66px; animation: agent-swing .6s ease-in-out infinite; }
+.agent-leg.back { transform-origin: 39px 66px; animation: agent-swing .6s ease-in-out infinite reverse; }
+.agent-arm.front { transform-origin: 25.5px 49px; animation: agent-swing .6s ease-in-out infinite reverse; }
+.agent-arm.back { transform-origin: 46.5px 49px; animation: agent-swing .6s ease-in-out infinite; }
+.agent-bob { animation: agent-bob .3s ease-in-out infinite alternate; }
+.agent-head { transform-origin: 36px 42px; animation: agent-nod .6s ease-in-out infinite alternate; }
+
+/* Idle stop: plant feet, look around, wave. */
+.idle .agent-leg, .idle .agent-arm.back, .idle .agent-shadow { animation: none; }
+.idle .agent-bob { animation: agent-breathe 1.6s ease-in-out infinite alternate; }
+.idle .agent-head { animation: agent-look 2.4s ease-in-out infinite; }
+.idle .agent-arm.front { animation: agent-wave .5s ease-in-out infinite alternate; }
+
+/* Resting: the session is quiet, so the companion dozes in place. */
+.resting .agent-art *, .resting .agent-shadow { animation: none; }
+.resting .agent-head { transform: rotate(-12deg); }
+.resting .agent-bob { animation: agent-breathe 2.4s ease-in-out infinite alternate; }
+.resting .agent-z { animation: agent-doze 2.4s ease-in infinite; }
+.resting .agent-art { filter: saturate(.55) drop-shadow(0 2px 3px #0a122a66); }
+
+/* The name tag counter-rotates so it always reads upright, even on the walls and ceiling. */
+.agent-tag { position: absolute; left: 50%; top: calc(-20px - var(--tag-push, 0px)); display: flex; align-items: center; gap: 5px; max-width: 132px;
+  transform: translate(-50%, -50%) rotate(calc(var(--angle) * -1deg)); padding: 3px 8px 3px 6px; border-radius: 999px;
+  background: #0f1a30e6; border: 1px solid color-mix(in srgb, var(--coat) 70%, transparent); color: #f4f7ff;
+  box-shadow: 0 3px 10px #0004; font-family: system-ui, sans-serif; }
+.agent-tag span { min-width: 0; line-height: 1.15; }
+.agent-tag strong, .agent-tag small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-tag strong { font-size: 10px; }
+.agent-tag small { font-size: 8.5px; color: #b9c8de; }
+.agent-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #5fe3a1; box-shadow: 0 0 0 0 #5fe3a1aa; animation: agent-pulse 1.6s ease-out infinite; }
+.resting .agent-dot { background: #8a98ad; animation: none; }
+.resting .agent-tag { opacity: .7; }
+
+@keyframes agent-swing { 0%, 100% { transform: rotate(-24deg); } 50% { transform: rotate(24deg); } }
+@keyframes agent-bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+@keyframes agent-shadow { from { transform: scaleX(1); } to { transform: scaleX(.85); } }
+@keyframes agent-nod { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes agent-breathe { from { transform: translateY(0); } to { transform: translateY(-1px); } }
+@keyframes agent-look { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-9deg); } 65% { transform: rotate(8deg); } }
+@keyframes agent-wave { from { transform: rotate(150deg); } to { transform: rotate(185deg); } }
+@keyframes agent-doze { 0% { opacity: 0; transform: translate(0, 4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -8px); } }
+@keyframes agent-pulse { 0% { box-shadow: 0 0 0 0 #5fe3a1aa; } 100% { box-shadow: 0 0 0 6px #5fe3a100; } }
+@media (prefers-reduced-motion: reduce) { .desktop-agent *, .desktop-agent { animation: none !important; } }

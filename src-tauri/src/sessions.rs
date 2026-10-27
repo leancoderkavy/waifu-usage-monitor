@@ -233,16 +233,22 @@ fn to_unix(t: SystemTime) -> i64 {
 
 /// Sessions active in the last 24 hours, most recent first.
 pub async fn list(codex_home: PathBuf, claude_home: PathBuf) -> Vec<Session> {
+    list_homes(vec![codex_home], vec![claude_home]).await
+}
+
+pub async fn list_homes(codex_homes: Vec<PathBuf>, claude_homes: Vec<PathBuf>) -> Vec<Session> {
     let mut out = tokio::task::spawn_blocking(move || {
         let mut v = vec![];
-        codex(&codex_home, &mut v);
-        claude(&claude_home, &mut v);
+        for home in codex_homes { codex(&home, &mut v); }
+        for home in claude_homes { claude(&home, &mut v); }
         v
     })
     .await
     .unwrap_or_default();
     ollama(&mut out).await;
     out.sort_by_key(|s| std::cmp::Reverse(s.last_active));
+    let mut seen = std::collections::HashSet::new();
+    out.retain(|s| seen.insert(s.id.clone()));
     out
 }
 
