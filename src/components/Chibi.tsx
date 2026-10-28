@@ -88,6 +88,7 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
       </linearGradient>
     </defs>
     <ellipse className="agent-shadow" cx="40" cy="97.5" rx="16" ry="2.6" />
+    <path className="agent-speed" d="M4 60h12M0 70h15M6 80h11M2 90h12" stroke="#ffffffcc" strokeWidth="1.6" strokeLinecap="round" />
     <g className="agent-bob">
       {/* Hair that falls behind the body. */}
       {who === "yuki" && <path className="agent-hair-back" d="M19 30C16 52 18 70 21 82Q40 88 59 82C62 70 64 52 61 30Z" fill={`url(#${id}-hair)`} {...line} />}
@@ -128,12 +129,18 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
         {/* Soft shadow the bangs cast on the forehead, and under the chin. */}
         <path d="M23.5 30Q32 34.5 40 32.5Q48 34.5 56.5 30L56 26H24Z" fill={shade} opacity=".28" />
         <g className="agent-eyes"><Eye cx={33} sleepy={who === "luna"} id={id} rim={look.eyes[0]} /><Eye cx={47} sleepy={who === "luna"} id={id} rim={look.eyes[0]} /></g>
+        <path className="agent-eyes-happy" d="M29 41Q33 35.5 37 41M43 41Q47 35.5 51 41" fill="none" stroke={INK} strokeWidth="1.9" strokeLinecap="round" />
         <ellipse cx="29" cy="45" rx="3" ry="1.5" fill="#ff8fa8" opacity={who === "akane" ? .75 : .45} />
         <ellipse cx="51" cy="45" rx="3" ry="1.5" fill="#ff8fa8" opacity={who === "akane" ? .75 : .45} />
-        {who === "sakura" && <path d="M37.2 45.4q2.8 2.6 5.6 0" fill="#c4415e" {...line} strokeWidth="1" />}
-        {who === "yuki" && <path d="M38.4 46q1.6 1 3.2 0" fill="none" {...line} strokeWidth="1" />}
-        {who === "akane" && <path d="M38 46.4q1-1 2 0t2 0" fill="none" {...line} strokeWidth="1" />}
-        {who === "luna" && <path d="M38.6 46.2h2.8" {...line} strokeWidth="1" />}
+        {/* Tsundere fluster: hatched blush lines. */}
+        <path className="agent-fluster" d="M26.6 46l1.6-2.4M28.8 46l1.6-2.4M31 46l1.6-2.4M48.6 46l1.6-2.4M50.8 46l1.6-2.4M53 46l1.6-2.4" stroke="#e0507a" strokeWidth=".8" strokeLinecap="round" />
+        <g className="agent-mouth">
+          {who === "sakura" && <path d="M37.2 45.4q2.8 2.6 5.6 0" fill="#c4415e" {...line} strokeWidth="1" />}
+          {who === "yuki" && <path d="M38.4 46q1.6 1 3.2 0" fill="none" {...line} strokeWidth="1" />}
+          {who === "akane" && <path d="M38 46.4q1-1 2 0t2 0" fill="none" {...line} strokeWidth="1" />}
+          {who === "luna" && <path d="M38.6 46.2h2.8" {...line} strokeWidth="1" />}
+        </g>
+        <path className="agent-mouth-open" d="M37.6 45.2q2.4-.9 4.8 0q-.2 3.4-2.4 3.4t-2.4-3.4z" fill="#c4415e" {...line} strokeWidth=".9" />
         {who === "yuki" && <g fill="#ffffff22" stroke="#8a8f9e" strokeWidth=".9">
           <circle cx="33" cy="39.5" r="6.2" /><circle cx="47" cy="39.5" r="6.2" /><path d="M39.2 39q.8-.8 1.6 0" fill="none" />
         </g>}
@@ -168,5 +175,12 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
       </g>
     </g>
     <text className="agent-z" x="60" y="10">z</text>
+    <g className="agent-emote">
+      {who === "sakura" && <path d="M62 4l1.3 3.2 3.2 1.3-3.2 1.3-1.3 3.2-1.3-3.2-3.2-1.3 3.2-1.3zM70 12l.8 1.8 1.8.8-1.8.8-.8 1.8-.8-1.8-1.8-.8 1.8-.8z" fill="#ffd34d" stroke="#e0a21a" strokeWidth=".5" strokeLinejoin="round" />}
+      {who === "yuki" && <g fill="#9fb3d6"><circle cx="60" cy="10" r="1.4" /><circle cx="65" cy="10" r="1.4" /><circle cx="70" cy="10" r="1.4" /></g>}
+      {who === "akane" && <path d="M60 7.5q2.6 0 2.6-2.6M65.4 4.9q0 2.6 2.6 2.6M68 13q-2.6 0-2.6 2.6M62.6 15.6q0-2.6-2.6-2.6" fill="none" stroke="#e5323b" strokeWidth="1.7" strokeLinecap="round" />}
+      {who === "luna" && <path d="M66 3a6 6 0 1 0 4 10.4A7 7 0 0 1 66 3z" fill="#ffe28a" stroke="#c9a640" strokeWidth=".6" />}
+    </g>
+    <text className="agent-alert" x="14" y="16">!</text>
   </svg>;
 }

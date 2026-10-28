@@ -1,21 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Session } from "./types";
-import { desktopSquad, edgeAt, poseAt, strideAt, stripOrigin, type Edge } from "./desktop-agents";
-import Chibi from "./components/Chibi";
+import { callSpots, dashAt, desktopSquad, edgeAt, perimeter, poseAt, strideAt, stripOrigin, waitingOn, type Edge, type Waiting } from "./desktop-agents";
+import { PERSONAS, pose, voiceLine, type Mode } from "./personas";
+import Chibi, { type ChibiId } from "./components/Chibi";
 import "./DesktopAgents.css";
 
 const CAST = { claude: ["sakura", "akane"], codex: ["yuki", "luna"] } as const;
 
-function Figure({ session, resting, mount }: { session: Session; resting: boolean; mount: (node: HTMLDivElement | null) => void }) {
+/** Claude sessions get Sakura or Akane, Codex sessions Yuki or Luna; the same session always gets the same one. */
+export function castOf(session: Pick<Session, "id" | "tool">): ChibiId {
+  let value = 7;
+  for (const char of session.id) value = (value * 33 + char.charCodeAt(0)) % 65521;
+  return CAST[session.tool === "claude" ? "claude" : "codex"][value % 2];
+}
+
+const MARK: Record<string, string> = { question: "?", approval: "!", done: "✓", stopped: "×" };
+const KIND: Record<string, string> = { question: "Question", approval: "Needs approval?", done: "Ready for follow-up", stopped: "Stopped" };
+
+function ago(seconds: number) {
+  const m = Math.max(0, Math.round(seconds / 60));
+  return m < 1 ? "just now" : m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ${m % 60}m ago`;
+}
+
+function Figure({ session, who, waiting, now, resting, mount }: {
+  session: Session; who: ChibiId; waiting: Waiting | null; now: number; resting: boolean; mount: (node: HTMLDivElement | null) => void;
+}) {
   const claude = session.tool === "claude";
-  return <div ref={mount} className={`desktop-agent ${claude ? "claude" : "codex"}${resting ? " resting" : ""}`}>
-    <Chibi who={CAST[claude ? "claude" : "codex"][session.subagent ? 1 : 0]} emblem={claude ? "✺" : "✦"} />
+  const name = session.project || session.tool;
+  return <div ref={mount} className={`desktop-agent ${who} ${claude ? "claude" : "codex"}${resting ? " resting" : ""}`}>
+    <Chibi who={who} emblem={claude ? "✺" : "✦"} />
     <div className="agent-tag">
       <i className="agent-dot" />
-      <span><strong>{session.project || session.tool}{session.subagent ? " · sub" : ""}</strong>
+      <span><strong>{name}{session.subagent ? " · sub" : ""}</strong>
         <small>{session.model || (claude ? "Claude" : "Codex")}</small></span>
     </div>
+    {waiting && <div className={`agent-bubble kind-${waiting.kind}`} role="status">
+      <b><i aria-hidden="true">{MARK[waiting.kind] ?? "!"}</i>{voiceLine(who, waiting.kind, session.id + waiting.since)}</b>
+      <p>{waiting.summary}</p>
+      <small>{PERSONAS[who].name} · {KIND[waiting.kind] ?? "Waiting"} · {name} · {ago(now - waiting.since)}</small>
+    </div>}
   </div>;
 }
 
@@ -24,35 +48,21 @@ const FPS = 15;
 /** The island bar (src-tauri/src/lib.rs `set_island_expanded`): companions on the top edge pass behind it. */
 const ISLAND = { width: 860, height: 54 };
 
-type Mode = "walk" | "idle" | "still" | "asleep";
-
-/** Limb pose custom properties for one tick: a walk cycle, an idle look-around and wave, or a doze. */
-export function pose(id: string, clock: number, mode: Mode): [string, string][] {
-  let offset = 0;
-  for (const char of id) offset = (offset * 31 + char.charCodeAt(0)) % 997;
-  const t = clock + offset / 97, turn = Math.PI * 2;
-  const eye = (t % 4.2) < 0.15 ? "0.1" : "1";
-  const set = (swing: number, bob: number, nod: number, wave: number, eyes: string, doze = 0): [string, string][] => [
-    ["--swing", swing.toFixed(1)], ["--bob", bob.toFixed(1)], ["--nod", nod.toFixed(1)],
-    ["--wave", wave.toFixed(0)], ["--eye", eyes], ["--doze", doze.toFixed(2)],
-  ];
-  if (mode === "asleep") return set(0, 0, -10, 0, "0.12", (t / 2.4) % 1);
-  if (mode === "still") return set(0, 0, 0, 0, eye);
-  if (mode === "idle") return set(0, -0.5 + 0.5 * Math.sin(t * 4), 9 * Math.sin(t * turn / 2.4), 167 + 17 * Math.sin(t * turn), eye);
-  const phase = t * turn / 0.64;
-  return set(22 * Math.sin(phase), -1.5 * Math.abs(Math.sin(phase)), 2.5 * Math.sin(phase), 0, eye);
-}
+interface Plan { who: ChibiId; asleep?: number; call?: { since: number; to: number } }
 
 /**
  * One strip per screen edge (src-tauri/src/desktop_agents.rs). Every strip computes the
  * whole squad from the clock but only draws companions currently on its own edge, so an
  * empty strip never repaints. Native windows ignore cursor events entirely.
+ *
+ * A session waiting on you sends its companion running to a spot on the floor, where she
+ * calls for you with a speech bubble summarising what the agent said.
  */
 export default function DesktopAgents({ edge }: { edge: Edge }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [now, setNow] = useState(Date.now() / 1000);
   const nodes = useRef(new Map<string, HTMLDivElement>());
-  const frozen = useRef(new Map<string, number>());
+  const plans = useRef(new Map<string, Plan>());
   useEffect(() => {
     document.documentElement.classList.add("desktop-agents-window");
     let cancelled = false;
@@ -74,12 +84,13 @@ export default function DesktopAgents({ edge }: { edge: Edge }) {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const shown = new Map<HTMLDivElement, boolean>();
     const styled = new Map<HTMLDivElement, string>();
+    const poses = new Map<HTMLDivElement, string>();
     const world = document.querySelector<HTMLElement>(".desktop-agent-world");
     let lastClip = "";
     // A plain timer, not requestAnimationFrame: between ticks the page has nothing to do.
     const draw = () => {
       // The strip sits inside the monitor's work area, which screen.avail* describes.
-      const width = screen.availWidth, height = screen.availHeight;
+      const width = screen.availWidth, height = screen.availHeight, total = perimeter(width, height);
       const [ox, oy] = stripOrigin(edge, width, height);
       if (world && edge === "top") {
         const left = Math.round(innerWidth / 2 - ISLAND.width / 2 - 6), right = left + ISLAND.width + 12;
@@ -88,9 +99,26 @@ export default function DesktopAgents({ edge }: { edge: Edge }) {
       }
       const clock = Date.now() / 1000, still = motion.matches;
       for (const [id, node] of nodes.current) {
-        // Dozing companions stay where they nodded off; reduced motion pins them in place.
-        const asleep = frozen.current.get(id);
-        const stride = strideAt(id, still ? 0 : asleep ?? clock, width, height);
+        const plan = plans.current.get(id);
+        if (!plan) continue;
+        const pace = PERSONAS[plan.who].pace;
+        let stride, mode: Mode, state = "";
+        if (plan.call) {
+          // Run over from wherever she was when the agent started waiting; reduced motion skips the run.
+          const from = strideAt(id, plan.call.since, width, height, pace).s;
+          const dash = dashAt(from, plan.call.to, total, still ? Infinity : clock - plan.call.since);
+          stride = dash;
+          mode = dash.arrived < 0 ? "dash" : still ? "still" : "call";
+          state = dash.arrived < 0 ? "dashing" : "calling";
+          // The bubble pops in with a little overshoot as she lands.
+          const k = Math.min(1, Math.max(0, dash.arrived) / 0.35);
+          const pop = (k >= 1 ? 1 : 0.6 + 0.4 * k + 0.12 * Math.sin(k * Math.PI)).toFixed(2);
+          if (node.style.getPropertyValue("--pop") !== pop) node.style.setProperty("--pop", pop);
+        } else {
+          // Dozing companions stay where they nodded off; reduced motion pins them in place.
+          stride = strideAt(id, still ? 0 : plan.asleep ?? clock, width, height, pace);
+          mode = plan.asleep != null ? "asleep" : still ? "still" : stride.idle ? "idle" : "walk";
+        }
         const here = edgeAt(stride.s, width, height) === edge;
         if (shown.get(node) !== here) {
           shown.set(node, here);
@@ -98,17 +126,25 @@ export default function DesktopAgents({ edge }: { edge: Edge }) {
         }
         if (!here) continue;
         const { x, y, angle } = poseAt(stride.s, width, height);
-        node.style.transform = `translate(${Math.round(x - ox - 44)}px, ${Math.round(y - oy - 110)}px) rotate(${Math.round(angle)}deg)`;
-        const mode = asleep != null ? "asleep" : still ? "still" : stride.idle ? "idle" : "walk";
-        for (const [name, value] of pose(id, clock, mode)) node.style.setProperty(name, value);
-        // These restyle the name tag too, so only write them when they change (corners, turns).
+        const transform = `translate(${Math.round(x - ox - 44)}px, ${Math.round(y - oy - 110)}px) rotate(${Math.round(angle)}deg)`;
+        if (node.style.transform !== transform) node.style.transform = transform;
+        // Unchanged poses (standing, waiting, dozing between z's) skip the style write and the repaint.
+        const posed = pose(plan.who, id, clock, mode);
+        const key = posed.map(([, value]) => value).join("|");
+        if (poses.get(node) !== key) {
+          poses.set(node, key);
+          for (const [name, value] of posed) node.style.setProperty(name, value);
+        }
+        // These restyle the name tag and bubble too, so only write them when they change (corners, turns, arrivals).
         const k = Math.abs(Math.sin(angle * Math.PI / 180)).toFixed(2);
-        const props = `${Math.round(angle)}|${k}|${stride.dir}`;
+        const props = `${Math.round(angle)}|${k}|${stride.dir}|${state}`;
         if (styled.get(node) !== props) {
           styled.set(node, props);
           node.style.setProperty("--angle", String(Math.round(angle)));
           node.style.setProperty("--k", k);
           node.style.setProperty("--facing", String(stride.dir));
+          node.classList.toggle("dashing", state === "dashing");
+          node.classList.toggle("calling", state === "calling");
         }
       }
     };
@@ -117,10 +153,21 @@ export default function DesktopAgents({ edge }: { edge: Edge }) {
     return () => window.clearInterval(timer);
   }, [edge]);
   const squad = desktopSquad(sessions, now);
-  const resting = squad.filter(s => now - s.lastActive > 120);
-  frozen.current = new Map(resting.map(s => [s.id, s.lastActive + 120]));
+  const waiting = new Map(squad.flatMap(s => { const w = waitingOn(s, now); return w ? [[s.id, w] as const] : []; }));
+  const order = [...waiting].sort((a, b) => a[1].since - b[1].since || a[0].localeCompare(b[0])).map(([id]) => id);
+  const spots = callSpots(order, screen.availWidth, screen.availHeight);
+  plans.current = new Map(squad.map(s => {
+    const w = waiting.get(s.id);
+    const plan: Plan = { who: castOf(s) };
+    if (w) plan.call = { since: w.since, to: spots.get(s.id) ?? 0 };
+    else if (now - s.lastActive > 120) plan.asleep = s.lastActive + 120;
+    return [s.id, plan];
+  }));
   return <div className="desktop-agent-world" aria-label="Desktop agents, activity inferred from local session logs">
-    {squad.map(s => <Figure key={s.id} session={s} resting={frozen.current.has(s.id)}
-      mount={node => { if (node) nodes.current.set(s.id, node); else nodes.current.delete(s.id); }} />)}
+    {squad.map(s => {
+      const plan = plans.current.get(s.id)!;
+      return <Figure key={s.id} session={s} who={plan.who} waiting={waiting.get(s.id) ?? null} now={now} resting={plan.asleep != null}
+        mount={node => { if (node) nodes.current.set(s.id, node); else nodes.current.delete(s.id); }} />;
+    })}
   </div>;
 }

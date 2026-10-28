@@ -31,6 +31,21 @@ pub struct Session {
     /// Context tokens used by the last turn (Codex) or last message (Claude).
     pub context_tokens: Option<f64>,
     pub size_bytes: Option<f64>,
+    /// Set when the latest turn is waiting on the user rather than on the model.
+    pub attention: Option<Attention>,
+}
+
+/// Why a session is waiting on the user, read from the end of its log.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Attention {
+    /// "question" (asked something), "approval" (a tool call has no result yet),
+    /// "done" (finished its turn) or "stopped" (the turn was aborted).
+    pub kind: String,
+    /// One line from the agent's last message, without markdown.
+    pub summary: String,
+    /// Unix seconds when it started waiting.
+    pub since: i64,
 }
 
 const LOOKBACK: Duration = Duration::from_secs(24 * 3600);
@@ -140,13 +155,113 @@ fn codex_file(path: &Path, mtime: SystemTime) -> Option<Session> {
         cwd: cwd.map(String::from),
         branch: m["git"]["branch"].as_str().map(String::from),
         client: m["originator"].as_str().or(m["source"].as_str()).map(String::from),
-        subagent: m["thread_source"].as_str().is_some_and(|s| s != "user"),
+        subagent: subagent_codex(m),
         last_active: last.unwrap_or_else(|| to_unix(mtime)),
         started: timestamp(&m["timestamp"]),
         total_tokens: tokens.and_then(|t| num(&t["total_token_usage"]["total_tokens"])),
         context_tokens: tokens.and_then(|t| num(&t["last_token_usage"]["input_tokens"])),
         size_bytes: None,
+        attention: if subagent_codex(m) { None } else { codex_attention(&tail) },
     })
+}
+
+fn subagent_codex(meta: &Value) -> bool {
+    meta["thread_source"].as_str().is_some_and(|s| s != "user")
+}
+
+/// A Codex turn ends with `task_complete` (or `turn_aborted`); a call with no output is pending.
+fn codex_attention(tail: &[Value]) -> Option<Attention> {
+    for j in tail.iter().rev() {
+        let p = &j["payload"];
+        let since = timestamp(&j["timestamp"]).unwrap_or(0);
+        match (j["type"].as_str(), p["type"].as_str()) {
+            (Some("event_msg"), Some("task_complete")) => {
+                return Some(from_reply(p["last_agent_message"].as_str().unwrap_or(""), since));
+            }
+            (Some("event_msg"), Some("turn_aborted")) => {
+                return Some(Attention { kind: "stopped".into(), summary: "The turn was interrupted.".into(), since });
+            }
+            (Some("event_msg"), Some("user_message" | "task_started")) => return None,
+            (Some("response_item"), Some("function_call_output" | "custom_tool_call_output" | "message" | "reasoning")) => return None,
+            (Some("response_item"), Some("function_call" | "custom_tool_call")) => {
+                let tool = p["name"].as_str().unwrap_or("a tool");
+                return Some(Attention { kind: "approval".into(), summary: format!("Waiting on {tool}."), since });
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Claude Code logs one entry per content block; only user/assistant entries are conversation.
+fn claude_attention(tail: &[Value]) -> Option<Attention> {
+    let last = tail.iter().rev().find(|j| j["type"] == "user" || j["type"] == "assistant")?;
+    if last["type"] == "user" { return None; }
+    let since = timestamp(&last["timestamp"]).unwrap_or(0);
+    let content = last["message"]["content"].as_array()?;
+    if let Some(call) = content.iter().rev().find(|c| c["type"] == "tool_use") {
+        let input = &call["input"];
+        return Some(match call["name"].as_str().unwrap_or("") {
+            "AskUserQuestion" => Attention {
+                kind: "question".into(),
+                summary: clip(input["questions"][0]["question"].as_str().unwrap_or("It has a question for you.")),
+                since,
+            },
+            "ExitPlanMode" => Attention { kind: "approval".into(), summary: "A plan is ready for your review.".into(), since },
+            tool => Attention { kind: "approval".into(), summary: format!("Waiting on {tool}."), since },
+        });
+    }
+    if last["message"]["stop_reason"] != "end_turn" { return None; }
+    // A reply split over several entries: gather the text of this message's blocks.
+    let id = &last["message"]["id"];
+    let text: Vec<&str> = tail.iter()
+        .filter(|j| j["type"] == "assistant" && &j["message"]["id"] == id)
+        .flat_map(|j| j["message"]["content"].as_array().into_iter().flatten())
+        .filter(|c| c["type"] == "text")
+        .filter_map(|c| c["text"].as_str())
+        .collect();
+    Some(from_reply(&text.join("\n"), since))
+}
+
+/// A finished reply asks something if one of its last lines ends in a question mark.
+fn from_reply(text: &str, since: i64) -> Attention {
+    let lines: Vec<String> = text.lines().map(plain).filter(|l| !l.is_empty()).collect();
+    if let Some(q) = lines.iter().rev().take(3).find(|l| l.ends_with('?')) {
+        // The question itself, not the sentences before it on the same line.
+        let sentence = q.trim_end_matches('?').rsplit_terminator(['.', '!']).next().unwrap_or(q).trim();
+        return Attention { kind: "question".into(), summary: clip(&format!("{sentence}?")), since };
+    }
+    let first = lines.first().cloned().unwrap_or_else(|| "Finished its turn.".into());
+    Attention { kind: "done".into(), summary: clip(&first), since }
+}
+
+/// Markdown down to readable text: no emphasis, code ticks, heading or list marks, link targets.
+fn plain(line: &str) -> String {
+    let mut out = String::new();
+    let mut chars = line.trim().trim_start_matches(['#', '>', '-', '*', ' ']).chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '*' | '_' | '`' | '[' => {}
+            ']' if chars.peek() == Some(&'(') => {
+                for c in chars.by_ref() { if c == ')' { break; } }
+            }
+            ']' => {}
+            _ => out.push(c),
+        }
+    }
+    let out = out.trim();
+    // "1. Step" list numbers.
+    match out.split_once(". ") {
+        Some((n, rest)) if !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()) => rest.trim().to_string(),
+        _ => out.to_string(),
+    }
+}
+
+fn clip(text: &str) -> String {
+    let text = text.trim();
+    if text.chars().count() <= 140 { return text.to_string(); }
+    let cut: String = text.chars().take(139).collect();
+    format!("{}…", cut.trim_end())
 }
 
 fn claude(home: &Path, out: &mut Vec<Session>) {
@@ -191,6 +306,8 @@ fn claude_file(path: &Path, mtime: SystemTime) -> Option<Session> {
         total_tokens: None,
         context_tokens: (context > 0.0).then_some(context),
         size_bytes: None,
+        // A subagent's finished turn goes back to its parent, not to the user.
+        attention: if subagent { None } else { claude_attention(&tail) },
     })
 }
 
@@ -223,6 +340,7 @@ async fn ollama(out: &mut Vec<Session>) {
             total_tokens: None,
             context_tokens: num(&m["context_length"]),
             size_bytes: num(&m["size_vram"]).filter(|v| *v > 0.0).or_else(|| num(&m["size"])),
+            attention: None,
         });
     }
 }
@@ -254,6 +372,44 @@ pub async fn list_homes(codex_homes: Vec<PathBuf>, claude_homes: Vec<PathBuf>) -
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
+    fn kind(a: Option<super::Attention>) -> Option<(String, String)> {
+        a.map(|a| (a.kind, a.summary))
+    }
+
+    #[test]
+    fn claude_turns_waiting_on_the_user() {
+        let ts = "2026-10-28T05:00:00Z";
+        let reply = |text: &str| json!({"type": "assistant", "timestamp": ts,
+            "message": {"id": "m1", "stop_reason": "end_turn", "content": [{"type": "text", "text": text}]}});
+        let tail = vec![reply("**Merged** the fix. Tests pass.\n\nThat works. Should I also deploy it?")];
+        assert_eq!(kind(super::claude_attention(&tail)), Some(("question".into(), "Should I also deploy it?".into())));
+        let tail = vec![reply("## Done\n1. Tests pass. See [PR](https://x/1).")];
+        assert_eq!(kind(super::claude_attention(&tail)), Some(("done".into(), "Done".into())));
+        assert_eq!(super::plain("1. Tests pass. See [PR](https://x/1)."), "Tests pass. See PR.");
+        let ask = json!({"type": "assistant", "timestamp": ts, "message": {"id": "m2", "stop_reason": "tool_use",
+            "content": [{"type": "tool_use", "name": "AskUserQuestion", "input": {"questions": [{"question": "Which theme?"}]}}]}});
+        assert_eq!(kind(super::claude_attention(&[ask])), Some(("question".into(), "Which theme?".into())));
+        let bash = json!({"type": "assistant", "timestamp": ts, "message": {"id": "m3", "stop_reason": "tool_use",
+            "content": [{"type": "tool_use", "name": "Bash", "input": {}}]}});
+        assert_eq!(super::claude_attention(&[bash.clone()]).unwrap().kind, "approval");
+        // The tool returned (or the user replied): nothing to do.
+        let answered = json!({"type": "user", "timestamp": ts, "message": {"content": [{"type": "tool_result"}]}});
+        assert_eq!(super::claude_attention(&[bash, answered, json!({"type": "system"})]), None);
+    }
+
+    #[test]
+    fn codex_turns_waiting_on_the_user() {
+        let ts = "2026-10-28T05:00:00Z";
+        let done = json!({"type": "event_msg", "timestamp": ts, "payload": {"type": "task_complete", "last_agent_message": "Updated `README.md`."}});
+        assert_eq!(kind(super::codex_attention(&[done.clone(), json!({"type": "token_count"})])), Some(("done".into(), "Updated README.md.".into())));
+        let call = json!({"type": "response_item", "timestamp": ts, "payload": {"type": "function_call", "name": "shell"}});
+        assert_eq!(super::codex_attention(&[done.clone(), call.clone()]).unwrap().kind, "approval");
+        let out = json!({"type": "response_item", "timestamp": ts, "payload": {"type": "function_call_output"}});
+        assert_eq!(super::codex_attention(&[done, call, out]), None);
+    }
+
     /// Reads this PC's real logs. Run with `cargo test -- --ignored`.
     #[tokio::test]
     #[ignore]
