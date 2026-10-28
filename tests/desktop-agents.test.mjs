@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { desktopSquad, advanceWalker, perimeter, poseAt, seedWalker } from '../src/desktop-agents.ts';
+import { desktopSquad, edgeAt, perimeter, poseAt, strideAt, stripOrigin, STRIP } from '../src/desktop-agents.ts';
 
 test('desktop only represents recent supported sessions, newest first, without duplicates', () => {
   const make = (id, age, tool = 'codex') => ({ id, tool, lastActive: 1000 - age });
@@ -36,24 +36,46 @@ test('walking is continuous around corners and survives tiny or empty screens', 
     previous = pose;
   }
   assert.deepEqual(poseAt(50, 0, 0), { x: 0, y: 0, angle: 0 });
-  let walker = seedWalker('agent', 40, 30);
-  for (let i = 0; i < 200; i++) walker = advanceWalker(walker, 1, 40, 30);
-  assert.ok(walker.s >= 0 && walker.s < perimeter(40, 30));
-  assert.equal(advanceWalker(walker, 1, 0, 0).s, 0);
+  assert.deepEqual(strideAt('agent', 2e9, 0, 0), { s: 0, dir: 1, idle: true });
 });
 
-test('seeds are stable per identity and movement time is capped after suspension', () => {
-  assert.deepEqual(seedWalker('a', 800, 600), seedWalker('a', 800, 600));
-  assert.notDeepEqual(seedWalker('a', 800, 600), seedWalker('b', 800, 600));
-  const walker = { s: 300, dir: 1, speed: 40, pause: 0, rng: 7 };
-  assert.deepEqual(advanceWalker(walker, 3600, 800, 600), advanceWalker(walker, 1, 800, 600));
-  assert.deepEqual(advanceWalker({ ...walker, pause: 2 }, 0.5, 800, 600), { ...walker, pause: 1.5 });
-  let w = seedWalker('wanderer', 800, 600), stops = 0, turns = 0;
-  for (let i = 0; i < 3000; i++) {
-    const next = advanceWalker(w, 1 / 30, 800, 600);
-    if (next.pause > 0 && w.pause === 0) stops++;
-    if (next.dir !== w.dir) turns++;
-    w = next;
+test('strides are a pure function of the clock, so every edge window agrees', () => {
+  const t = 1.79e9;
+  assert.deepEqual(strideAt('a', t, 800, 600), strideAt('a', t, 800, 600));
+  assert.notDeepEqual(strideAt('a', t, 800, 600), strideAt('b', t, 800, 600));
+  let previous = strideAt('wanderer', t, 800, 600), stops = 0, turns = 0;
+  const total = perimeter(800, 600);
+  for (let i = 1; i < 30 * 120; i++) {
+    const next = strideAt('wanderer', t + i / 30, 800, 600);
+    const step = Math.min(Math.abs(next.s - previous.s), total - Math.abs(next.s - previous.s));
+    assert.ok(step < 2, `jumped ${step}px in one frame`);
+    if (next.idle && !previous.idle) stops++;
+    if (next.dir !== previous.dir && !next.idle) turns++;
+    assert.ok(next.s >= 0 && next.s < total);
+    previous = next;
   }
-  assert.ok(stops > 0 && turns > 0, 'walkers occasionally stop and turn around');
+  assert.ok(stops > 0 && turns > 0, 'companions stop to look around and walk back');
+});
+
+test('each point of the border belongs to exactly one strip, and figures fit inside it', () => {
+  const [w, h] = [1920, 1040];
+  const total = perimeter(w, h);
+  const seen = new Set();
+  for (let s = 0; s < total; s += 2) {
+    const edge = edgeAt(s, w, h);
+    seen.add(edge);
+    const { x, y, angle } = poseAt(s, w, h);
+    const [ox, oy] = stripOrigin(edge, w, h);
+    const [sw, sh] = edge === 'bottom' || edge === 'top' ? [w, STRIP] : [STRIP, h];
+    // The figure's head stands ~110px from its feet, pointing away from the edge.
+    const rad = angle * Math.PI / 180, hx = x + Math.sin(rad) * 110, hy = y - Math.cos(rad) * 110;
+    for (const [px, py] of [[x, y], [hx, hy]]) {
+      assert.ok(px - ox >= -1 && px - ox <= sw + 1 && py - oy >= -1 && py - oy <= sh + 1, `${edge} strip misses ${s}`);
+    }
+  }
+  assert.deepEqual([...seen].sort(), ['bottom', 'left', 'right', 'top']);
+  assert.equal(edgeAt(10, w, h), 'bottom');
+  assert.equal(edgeAt(total - 10, w, h), 'bottom');
+  assert.deepEqual(stripOrigin('bottom', w, h), [0, h - STRIP]);
+  assert.deepEqual(stripOrigin('right', w, h), [w - STRIP, 0]);
 });

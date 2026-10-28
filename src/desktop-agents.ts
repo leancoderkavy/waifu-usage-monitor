@@ -1,5 +1,8 @@
-/** Distance along the screen border, walking direction, and a deterministic RNG for idle stops. */
-export interface Walker { s: number; dir: 1 | -1; speed: number; pause: number; rng: number }
+/** Distance along the screen border, walking direction, and whether the companion has stopped. */
+export interface Stride { s: number; dir: 1 | -1; idle: boolean }
+export type Edge = "bottom" | "right" | "top" | "left";
+/** Overlay strip thickness in CSS pixels; must match `STRIP` in src-tauri/src/desktop_agents.rs. */
+export const STRIP = 200;
 /** Foot point in window pixels, and rotation in degrees so the feet press against the nearest edge. */
 export interface Pose { x: number; y: number; angle: number }
 
@@ -55,30 +58,44 @@ function hash(id: string) {
   return value;
 }
 
-function random(state: number): [number, number] {
-  const next = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-  return [next / 4294967296, next];
-}
-
-export function seedWalker(id: string, width: number, height: number): Walker {
-  const value = hash(id);
-  return { s: (value % 9973) / 9973 * perimeter(width, height), dir: value & 1 ? 1 : -1,
-    speed: 30 + value % 14, pause: 0, rng: value || 1 };
-}
-
-/** Walks the loop, sometimes stopping to look around or turning back. */
-export function advanceWalker(w: Walker, seconds: number, width: number, height: number): Walker {
-  const dt = Math.max(0, Math.min(1, seconds));
+/**
+ * Where a companion is at a given clock time. Each one repeats its own loop: walk on,
+ * stop to look around, walk back a little, stop again. Being a pure function of the
+ * clock keeps the separate edge windows in agreement without talking to each other.
+ */
+export function strideAt(id: string, seconds: number, width: number, height: number): Stride {
   const total = perimeter(width, height);
-  if (dt === 0 || total <= 0) return { ...w, s: total > 0 ? ((w.s % total) + total) % total : 0 };
-  if (w.pause > 0) return { ...w, pause: Math.max(0, w.pause - dt) };
-  let [roll, rng] = random(w.rng);
-  let { dir, pause } = w;
-  if (roll < 0.06 * dt) {
-    let length;
-    [length, rng] = random(rng);
-    pause = 1.2 + length * 2.4;
-  } else if (roll < 0.09 * dt) dir = dir === 1 ? -1 : 1;
-  const s = (((w.s + dir * w.speed * dt) % total) + total) % total;
-  return { s, dir, speed: w.speed, pause, rng };
+  if (total <= 0) return { s: 0, dir: 1, idle: true };
+  const v = hash(id);
+  const speed = 30 + v % 14;
+  const on = 14 + (v >>> 3) % 12, back = 4 + (v >>> 7) % 6;
+  const rest = 1.5 + (v >>> 11) % 20 / 10, pause = 1 + (v >>> 15) % 15 / 10;
+  const loop = on + rest + back + pause;
+  const sign = v & 1 ? 1 : -1;
+  // Measured from a recent epoch so long uptimes keep full float precision.
+  const t = Math.max(0, seconds - 1.7e9) + (v >>> 19) % 1000 / 1000 * loop;
+  const cycles = Math.floor(t / loop), r = t - cycles * loop;
+  let walked: number, dir: 1 | -1 = sign, idle = false;
+  if (r < on) walked = r;
+  else if (r < on + rest) { walked = on; idle = true; }
+  else if (r < on + rest + back) { walked = on - (r - on - rest); dir = sign === 1 ? -1 : 1; }
+  else { walked = on - back; idle = true; }
+  const start = (v % 9973) / 9973 * total;
+  const travelled = ((cycles * (on - back) + walked) * speed) % total;
+  return { s: (((start + sign * travelled) % total) + total) % total, dir, idle };
+}
+
+/** Which strip draws a companion: each edge owns its straight run and the nearer half of each corner. */
+export function edgeAt(distance: number, width: number, height: number): Edge {
+  const w = Math.max(0, width), h = Math.max(0, height), r = corner(w, h);
+  const total = perimeter(w, h);
+  const s = total > 0 ? ((distance % total) + total) % total : 0;
+  const arc = Math.PI * r / 2, across = w - 2 * r, up = h - 2 * r;
+  const ends = [across + arc / 2, across + arc + up + arc / 2, 2 * across + 2 * arc + up + arc / 2, total - arc / 2];
+  return s < ends[0] || s >= ends[3] ? "bottom" : s < ends[1] ? "right" : s < ends[2] ? "top" : "left";
+}
+
+/** Top-left corner of an edge's strip within the work area. */
+export function stripOrigin(edge: Edge, width: number, height: number): [number, number] {
+  return edge === "bottom" ? [0, Math.max(0, height - STRIP)] : edge === "right" ? [Math.max(0, width - STRIP), 0] : [0, 0];
 }

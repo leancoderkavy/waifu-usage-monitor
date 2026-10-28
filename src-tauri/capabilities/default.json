@@ -5,7 +5,7 @@
   "windows": [
     "main",
     "island",
-    "desktop-agents"
+    "desktop-agents-*"
   ],
   "permissions": [
     "core:default",

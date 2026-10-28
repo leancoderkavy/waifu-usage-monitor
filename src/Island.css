@@ -56,6 +56,8 @@ body:has(.island-canvas),
 .island-window strong { color: var(--ink); font-size: 10px; }
 .island-window strong.island-danger { color: var(--danger); }
 .island-pill .island-danger { color: var(--danger); }
+.island-reset { color: var(--ink-soft); font-size: 9px; font-variant-numeric: tabular-nums; }
+.island-pill .island-reset-spent { color: var(--danger); font-weight: 700; }
 .island-placeholder { color: var(--ink-soft); font-size: 12px; }
 .island-chevron { color: var(--accent); font-size: 16px; }
 
