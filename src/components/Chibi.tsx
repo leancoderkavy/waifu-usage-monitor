@@ -40,15 +40,18 @@ function Snowflake({ x, y }: { x: number; y: number }) {
   </g>;
 }
 
-function Eye({ cx, sleepy, id }: { cx: number; sleepy: boolean; id: string }) {
+/** Big anime eye; pupils sit slightly forward so the figure looks where it walks. */
+function Eye({ cx, sleepy, id, rim }: { cx: number; sleepy: boolean; id: string; rim: string }) {
+  const outer = cx < 40 ? -1 : 1;
   return <g>
-    <ellipse cx={cx} cy={39.5} rx={4.2} ry={sleepy ? 3.4 : 5.2} fill={`url(#${id}-iris)`} />
-    <ellipse cx={cx} cy={sleepy ? 40.4 : 40.2} rx={1.9} ry={sleepy ? 1.8 : 2.6} fill={INK} opacity=".85" />
-    <circle cx={cx - 1.4} cy={sleepy ? 38.8 : 37.2} r={1.5} fill="#fff" />
-    <circle cx={cx + 1.5} cy={42} r={.7} fill="#fff" opacity=".9" />
+    <ellipse cx={cx} cy={39.5} rx={4.2} ry={sleepy ? 3.4 : 5.2} fill={`url(#${id}-iris)`} stroke={rim} strokeWidth=".7" />
+    <ellipse cx={cx + .6} cy={sleepy ? 40.4 : 40.2} rx={1.9} ry={sleepy ? 1.8 : 2.6} fill={INK} opacity=".85" />
+    <circle cx={cx - .9} cy={sleepy ? 38.8 : 37.2} r={1.5} fill="#fff" />
+    <circle cx={cx + 1.9} cy={42} r={.7} fill="#fff" opacity=".9" />
+    <path d={`M${cx - 2.2} 45.2h4.4`} stroke={rim} strokeWidth=".6" strokeLinecap="round" opacity=".7" />
     {sleepy
-      ? <path d={`M${cx - 5} 37.2h10`} stroke={INK} strokeWidth="1.7" strokeLinecap="round" />
-      : <path d={`M${cx - 5} 35.4Q${cx} 32.6 ${cx + 5} 35.4`} fill="none" stroke={INK} strokeWidth="1.7" strokeLinecap="round" />}
+      ? <path d={`M${cx - 5} 37.2h10`} stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
+      : <path d={`M${cx - 5} 35.4Q${cx} 32.4 ${cx + 5} 35.4l${outer * 1.4} -.9`} fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
   </g>;
 }
 
@@ -63,6 +66,7 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
     {who === "sakura" && <rect x={x - 3.2} y={86} width={6.4} height={5} fill="#fff" />}
     {who === "luna" && <path d={`M${x - 3.2} 80h6.4M${x - 3.2} 84h6.4M${x - 3.2} 88h6.4`} stroke="#9d7be0" strokeWidth="1.6" />}
     <path d={`M${x - 4} 90.5h7a4 4 0 0 1 4 4V97h-11z`} fill={look.shoes} {...line} />
+    <path d={`M${x - 1.5} 92.6h2.6`} stroke="#fff" strokeWidth=".9" strokeLinecap="round" opacity=".55" />
   </g>;
   const arm = (x: number, cls: string, sleeve: string) => <g className={`agent-arm ${cls}`}>
     <rect x={x - 3} y={54} width={6} height={15} rx={3} fill={sleeve} {...line} />
@@ -106,6 +110,7 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
         <path d="M27 72Q40 76 53 72L55 80Q40 84 25 80Z" fill="#6b2020" {...line} />
       </>}
       {who === "luna" && <><path d="M33 53q7 6 14 0" fill="none" stroke="#3d3848" strokeWidth="3" /><path d="M37 56v8M43 56v8" stroke="#cfc7e6" strokeWidth=".9" /></>}
+      <path d="M33.5 66q1.6 5 .8 9.5M46.5 66q-1.6 5-.8 9.5" fill="none" stroke={look.top[1]} strokeWidth=".9" strokeLinecap="round" opacity=".7" />
       <text className="agent-emblem" x="47.5" y="71">{emblem}</text>
 
       {leg(36, "front")}
@@ -113,14 +118,16 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
 
       {/* Head. */}
       <g className="agent-head">
-        <rect x="37" y="48" width="6" height="6" fill={look.skin} {...line} />
+        <rect x="37" y="48" width="6" height="6" fill={look.skin} {...line} /><path d="M37.6 51.5h4.8v1.8q-2.4 1-4.8 0z" fill="#e8b9a6" opacity=".8" />
         {who === "sakura" && <g>
           <path d="M27 52Q40 60 53 52" fill="none" stroke="#e8f4ff" strokeWidth="2.6" />
           <circle cx="27.5" cy="52.5" r="3.6" fill="#fff" {...line} /><circle cx="27.5" cy="52.5" r="1.8" fill="#8fe0e6" />
           <circle cx="52.5" cy="52.5" r="3.6" fill="#fff" {...line} /><circle cx="52.5" cy="52.5" r="1.8" fill="#8fe0e6" />
         </g>}
         <path d="M22 30C22 45 30 51.5 40 51.5S58 45 58 30C58 20 50 16 40 16S22 20 22 30Z" fill={look.skin} {...line} />
-        <g className="agent-eyes"><Eye cx={33} sleepy={who === "luna"} id={id} /><Eye cx={47} sleepy={who === "luna"} id={id} /></g>
+        {/* Soft shadow the bangs cast on the forehead, and under the chin. */}
+        <path d="M23.5 30Q32 34.5 40 32.5Q48 34.5 56.5 30L56 26H24Z" fill={shade} opacity=".28" />
+        <g className="agent-eyes"><Eye cx={33} sleepy={who === "luna"} id={id} rim={look.eyes[0]} /><Eye cx={47} sleepy={who === "luna"} id={id} rim={look.eyes[0]} /></g>
         <ellipse cx="29" cy="45" rx="3" ry="1.5" fill="#ff8fa8" opacity={who === "akane" ? .75 : .45} />
         <ellipse cx="51" cy="45" rx="3" ry="1.5" fill="#ff8fa8" opacity={who === "akane" ? .75 : .45} />
         {who === "sakura" && <path d="M37.2 45.4q2.8 2.6 5.6 0" fill="#c4415e" {...line} strokeWidth="1" />}
@@ -137,7 +144,9 @@ export default function Chibi({ who, emblem }: { who: ChibiId; emblem: string })
             fill={`url(#${id}-hair)`} {...line} />
           <path className="agent-lock left" d={look.long ? "M19 30Q17 46 22 56Q25 46 24.5 34Z" : "M19 30Q17 44 21 52Q25 52 26 50Q24 44 24.5 34Z"} fill={hair} {...line} />
           <path className="agent-lock right" d={look.long ? "M61 30Q63 46 58 56Q55 46 55.5 34Z" : "M61 30Q63 44 59 52Q55 52 54 50Q56 44 55.5 34Z"} fill={hair} {...line} />
+          <path d="M33 13.5Q30.5 20 31.5 27M47 13.5Q49.5 20 48.5 26M40.5 11.5Q39.5 17 40.5 24" fill="none" stroke={shade} strokeWidth=".8" strokeLinecap="round" opacity=".75" />
           <path d="M26 19Q40 13 54 19" fill="none" stroke={shine} strokeWidth="2.2" strokeLinecap="round" opacity=".8" />
+          <path d="M28.5 18.2l1.2-1.6M50.3 17.4l1.4 1.2" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" opacity=".7" />
           <path d="M39 10q3-3 1-5.5" fill="none" stroke={shade} strokeWidth="1.6" strokeLinecap="round" />
         </g>
         {who === "akane" && <>

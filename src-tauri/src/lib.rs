@@ -170,7 +170,18 @@ async fn llm_available(url: String, model: String) -> bool {
 /// Codex and Claude Code sessions from the last 24 hours, plus loaded Ollama models.
 #[tauri::command]
 async fn list_sessions(app: AppHandle) -> Vec<sessions::Session> {
-    let accounts = store::load(&app).unwrap_or_default();
+    // Every companion strip polls this; share one scan of the session logs between them.
+    static CACHE: std::sync::Mutex<Option<(std::time::Instant, Vec<sessions::Session>)>> = std::sync::Mutex::new(None);
+    if let Some((at, list)) = CACHE.lock().unwrap().as_ref() {
+        if at.elapsed() < std::time::Duration::from_secs(5) { return list.clone(); }
+    }
+    let list = scan_sessions(&app).await;
+    *CACHE.lock().unwrap() = Some((std::time::Instant::now(), list.clone()));
+    list
+}
+
+async fn scan_sessions(app: &AppHandle) -> Vec<sessions::Session> {
+    let accounts = store::load(app).unwrap_or_default();
     let mut codex_homes = vec![providers::codex::default_home()];
     let mut claude_homes = vec![providers::claude::default_home()];
     for account in accounts {
@@ -298,7 +309,8 @@ fn sync_page_visibility(app: &AppHandle, label: &str) {
 #[tauri::command]
 fn set_island_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
     let window = app.get_webview_window("island").ok_or("Island window missing")?;
-    let width = 680.0;
+    // Wide enough for every provider pill with its reset countdown.
+    let width = 860.0;
     let height = if expanded { 520.0 } else { 54.0 };
     window.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
     if let Some(monitor) = window.current_monitor().map_err(|e| e.to_string())? {
@@ -356,7 +368,7 @@ pub fn run() {
                     "companions" => {
                         let handle = app.clone();
                         tauri::async_runtime::spawn(async move {
-                            let enabled = handle.get_webview_window("desktop-agents").is_none();
+                            let enabled = !desktop_agents::is_open(&handle);
                             if let Err(e) = desktop_agents::set_desktop_agents(handle, enabled).await {
                                 eprintln!("Desktop agents: {e}");
                             }

@@ -36,6 +36,13 @@ function systemGauges(s: SystemStats): Gauge[] {
   return gauges;
 }
 
+/** Compact countdown for the strip: "↻ 2h 5m" normally, "resets 2h 5m" in red once a limit is spent. */
+function ResetTag({ at, spent }: { at: number | null; spent: boolean }) {
+  const text = formatReset(at);
+  if (!text) return null;
+  return <small className={`island-reset${spent ? " island-reset-spent" : ""}`}>{spent ? `resets ${text}` : `↻ ${text}`}</small>;
+}
+
 const gaugeColor = (gauge: Gauge) => gauge.hot ? "#e8304f" : gauge.pct >= 75 ? "#e89a1c" : "#5b93ff";
 
 export default function Island() {
@@ -47,6 +54,12 @@ export default function Island() {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [sys, setSys] = useState<SystemStats | null>(null);
   const [settings, setSettings] = useState(loadSettings);
+  // Re-render the reset countdowns twice a minute; usage itself comes from the monitor.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const avatar = useCustomAsset("avatar", settings.customAssets?.avatar);
 
   // The dashboard saves settings to localStorage; pick up name and art changes live.
@@ -126,21 +139,25 @@ export default function Island() {
           <img className="island-mark" src={avatar ?? waifuById(settings.waifu).avatar} alt="" aria-hidden="true" draggable={false} />
           <span className="island-title">{settings.waifuName}</span>
           <div className="island-summary" aria-label="Lowest remaining allowance by provider">
-            {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft }) => {
+            {summaries.length ? summaries.map(({ provider, left, limitLabel, windowLabel, sessionLeft, weeklyLeft, resetsAt, sessionResetsAt, weeklyResetsAt }) => {
               const showClaudeWindows = provider === "claude" && sessionLeft != null && weeklyLeft != null;
+              const resetText = (at: number | null) => { const t = formatReset(at); return t ? `, resets in ${t}` : ""; };
               const description = showClaudeWindows
-                ? `Claude: ${Math.round(sessionLeft)}% remaining in 5-hour session; ${Math.round(weeklyLeft)}% remaining weekly`
-                : `${PROVIDERS[provider].name}: ${left == null ? "usage unavailable" : `${Math.round(left)}% remaining on ${limitLabel}`}`;
+                ? `Claude: ${Math.round(sessionLeft)}% remaining in 5-hour session${resetText(sessionResetsAt)}; ${Math.round(weeklyLeft)}% remaining weekly${resetText(weeklyResetsAt)}`
+                : `${PROVIDERS[provider].name}: ${left == null ? "usage unavailable" : `${Math.round(left)}% remaining on ${limitLabel}${resetText(resetsAt)}`}`;
               return <span className="island-pill" key={provider} title={description} aria-label={description}>
                 <i style={{ background: PROVIDERS[provider].color }} />
                 <b>{shortName[provider]}</b>
                 {showClaudeWindows ? <>
-                  <span className="island-window">5h <strong>{Math.round(sessionLeft)}%</strong></span>
+                  <span className="island-window">5h <strong className={sessionLeft <= 10 ? "island-danger" : ""}>{Math.round(sessionLeft)}%</strong></span>
+                  <ResetTag at={sessionResetsAt} spent={sessionLeft <= 0} />
                   <span aria-hidden="true">·</span>
                   <span className="island-window">7d <strong className={weeklyLeft <= 10 ? "island-danger" : ""}>{Math.round(weeklyLeft)}%</strong></span>
+                  <ResetTag at={weeklyResetsAt} spent={weeklyLeft <= 0} />
                 </> : <>
                   <strong className={left != null && left <= 10 ? "island-danger" : ""}>{left == null ? "—" : `${Math.round(left)}%`}</strong>
                   {windowLabel && <small aria-hidden="true">{windowLabel}</small>}
+                  {left != null && <ResetTag at={resetsAt} spent={left <= 0} />}
                 </>}
               </span>;
             }) : <span className="island-placeholder">{loading ? "Checking limits…" : "No accounts yet"}</span>}
