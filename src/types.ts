@@ -85,6 +85,14 @@ export interface Session {
   totalTokens?: number | null;
   contextTokens?: number | null;
   sizeBytes?: number | null;
+  /** Set when the latest turn is waiting on the user (src-tauri/src/sessions.rs). */
+  attention?: Attention | null;
+}
+
+export interface Attention {
+  kind: "question" | "approval" | "done" | "stopped" | string;
+  summary: string;
+  since: number;
 }
 
 export interface SystemStats {

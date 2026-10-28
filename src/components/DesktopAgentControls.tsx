@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-const TOUR_KEY = "kosmos.desktop-agents-tour.v1";
+const TOUR_KEY = "kosmos.desktop-agents-tour.v2";
 function introductionPending() {
   try { return localStorage.getItem(TOUR_KEY) !== "seen"; } catch { return true; }
 }
@@ -36,12 +36,13 @@ export default function DesktopAgentControls() {
         catch (e) { setError(String(e)); }
         finally { setBusy(false); }
       }} />Show walking characters across the desktop</label>
-    <p className="help">Click through figures to use your apps. Up to 12 recent Claude/Codex sessions appear on the monitor containing the usage island. Figures rest after 2 minutes without log activity and leave after 15 minutes.</p>
+    <p className="help">Click through figures to use your apps. Up to 12 recent Claude/Codex sessions appear on the monitor containing the usage island. Figures rest after 2 minutes without log activity and leave after 15 minutes. When an agent asks a question, finishes, stops, or seems stuck on a tool for 90 seconds, its companion runs to the bottom of the screen and calls you with a speech bubble for up to 2 hours.</p>
     <button ref={replay} type="button" className="btn small ghost" aria-expanded={guide} aria-controls="desktop-agent-guide"
       onClick={() => { replayed.current = true; setGuide(true); }}>Desktop agents guide</button>
-    {guide && enabled !== null && <aside id="desktop-agent-guide" aria-label="Desktop agents introduction, step 1 of 1"
+    {guide && enabled !== null && <aside id="desktop-agent-guide" aria-label="Desktop agents introduction"
       onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); closeGuide(); } }}>
-      <p className="help"><strong>Your agents, on your desktop.</strong> Start a Claude Code or Codex session, then enable the checkbox above. Sakura represents Claude; Yuki represents Codex. Labels identify the project and model. Recent log activity is an estimate of work, not proof a process is running. Reduced motion keeps figures still.</p>
+      <p className="help"><strong>Your agents, on your desktop.</strong> Start a Claude Code or Codex session, then enable the checkbox above. Sakura (genki) or Akane (tsundere) represents a Claude session; Yuki (kuudere) or Luna (dreamy) represents Codex. Each walks, idles and talks in her own style. Labels identify the project and model. Recent log activity is an estimate of work, not proof a process is running. Reduced motion keeps figures still.</p>
+      <p className="help"><strong>New: they call you.</strong> A companion waiting on you runs to the bottom edge and shows a speech bubble: what the agent needs (question, approval, follow-up, stopped) and a one-line summary of its last message. Reply in that session and the bubble clears on the next scan (about 15 seconds). “Needs approval?” is a guess from a tool call with no result yet.</p>
       <p className="help">Hide them here or from the tray’s “Show / hide desktop agents” menu. Replay this introduction with “Desktop agents guide”.</p>
       <button ref={dismiss} type="button" className="btn small" onClick={closeGuide}>Got it / Skip</button>
     </aside>}

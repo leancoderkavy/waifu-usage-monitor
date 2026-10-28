@@ -11,23 +11,27 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 /* The foot point sits at the bottom centre; rotation turns the figure so its feet meet the screen edge. */
 .desktop-agent { position: absolute; top: 0; left: 0; width: 88px; height: 110px; transform-origin: 50% 100%; will-change: transform;
   contain: layout style; --coat: #7fe0ea; --facing: 1; --angle: 0; --k: 0;
-  --swing: 0; --bob: 0; --nod: 0; --wave: 0; --eye: 1; --doze: 0; }
+  --swing: 0; --bob: 0; --nod: 0; --wave: 0; --arm2: 0; --tap: 0; --hop: 0; --eye: 1; --doze: 0;
+  --talk: 0; --joy: 0; --emote: 0; --fluster: 0; --pop: 1; }
 .desktop-agent:not([style]) { visibility: hidden; }
 .desktop-agent.claude { --coat: #ffb48a; }
 
 /* Chibi art (components/Chibi.tsx) carries its own colours; this file only moves the parts. */
-.agent-art { display: block; width: 88px; height: 110px; overflow: visible; transform: scaleX(var(--facing)); transform-origin: 50% 100%; }
+.agent-art { display: block; width: 88px; height: 110px; overflow: visible; transform: scaleX(var(--facing)); transform-origin: 50% 100%;
+  opacity: var(--see-through); }
+/* See-through, so the windows and text underneath stay readable. */
+.desktop-agents-window { --see-through: .55; }
 .agent-art * { transform-box: view-box; }
 .agent-shadow { fill: #08102470; }
 .agent-emblem { font: 700 5px/1 system-ui, sans-serif; fill: #fff; opacity: .75; text-anchor: middle; }
 
 /* Walk cycle: hips and shoulders swing in opposition, the body bobs, hair trails. */
-.agent-leg.front { transform-origin: 36px 76px; transform: rotate(calc(var(--swing) * 1deg)); }
+.agent-leg.front { transform-origin: 36px 76px; transform: rotate(calc(var(--swing) * 1deg + var(--tap) * 1deg)); }
 .agent-leg.back { transform-origin: 44px 76px; transform: rotate(calc(var(--swing) * -1deg)); }
-.agent-arm.back { transform-origin: 50px 56px; transform: rotate(calc(var(--swing) * 1deg)); }
-/* The front arm swings while walking and waves (--wave) when stopped. */
+/* Arms swing while walking; --wave and --arm2 raise them (waving, glasses, hands on hips). */
+.agent-arm.back { transform-origin: 50px 56px; transform: rotate(calc(var(--swing) * 1deg + var(--arm2) * 1deg)); }
 .agent-arm.front { transform-origin: 30px 56px; transform: rotate(calc(var(--swing) * -1deg + var(--wave) * 1deg)); }
-.agent-bob { transform: translateY(calc(var(--bob) * 1px)); }
+.agent-bob { transform: translateY(calc((var(--bob) - var(--hop)) * 1px)); }
 .agent-head { transform-origin: 40px 52px; transform: rotate(calc(var(--nod) * 1deg)); }
 .agent-tail.left, .agent-lock.left { transform: rotate(calc(var(--swing) * .22deg)); }
 .agent-tail.right, .agent-lock.right { transform: rotate(calc(var(--swing) * -.22deg)); }
@@ -35,12 +39,25 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 .agent-tail.right { transform-origin: 56px 48px; }
 .agent-lock.left { transform-origin: 21px 32px; }
 .agent-lock.right { transform-origin: 59px 32px; }
-.agent-eyes { transform-origin: 40px 39.5px; transform: scaleY(var(--eye)); }
+.agent-eyes { transform-origin: 40px 39.5px; transform: scaleY(var(--eye)); opacity: calc(1 - var(--joy)); }
+
+/* Faces: happy ^^ eyes, a talking mouth, tsundere blush lines. */
+.agent-eyes-happy { opacity: var(--joy); }
+.agent-mouth { opacity: calc(1 - var(--talk)); }
+.agent-mouth-open { opacity: var(--talk); }
+.agent-fluster { opacity: var(--fluster); }
+
+/* Emotes over the head: sparkles, an ellipsis, an anger mark, a moon. The "!" and speed lines show when called. */
+.agent-emote { opacity: var(--emote); }
+.agent-alert { display: none; font: 900 15px/1 system-ui, sans-serif; fill: #ffd34d; stroke: #3a2433; stroke-width: .9; paint-order: stroke; }
+.calling .agent-alert { display: inline; }
+.agent-speed { display: none; }
+.dashing .agent-speed { display: inline; }
 
 /* Resting: the session is quiet, so the companion dozes in place with eyes shut. */
 .agent-z { font: 700 11px/1 system-ui, sans-serif; fill: #dce8ff; stroke: #3a2433; stroke-width: .6; display: none; }
 .resting .agent-z { display: inline; opacity: calc(1 - var(--doze)); transform: translate(calc(var(--doze) * 6px), calc(var(--doze) * -8px)); }
-.resting .agent-art { opacity: .85; }
+.resting .agent-art { opacity: calc(var(--see-through) * .75); }
 
 /*
  * The name tag counter-rotates so it always reads upright. On the floor and ceiling it sits
@@ -48,7 +65,7 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
  */
 .agent-tag { position: absolute; left: calc(50% + var(--k) * 42px); top: calc(-16px + var(--k) * 46px); display: flex; align-items: center; gap: 5px; max-width: 124px;
   transform: translate(-50%, -50%) rotate(calc(var(--angle) * -1deg)); padding: 3px 8px 3px 6px; border-radius: 999px;
-  background: #0f1a30e6; border: 1px solid color-mix(in srgb, var(--coat) 70%, transparent); color: #f4f7ff;
+  background: #0f1a3080; border: 1px solid color-mix(in srgb, var(--coat) 50%, transparent); opacity: .8; color: #f4f7ff;
   font-family: system-ui, sans-serif; }
 .agent-tag span { min-width: 0; line-height: 1.15; }
 .agent-tag strong, .agent-tag small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -56,4 +73,27 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 .agent-tag small { font-size: 8.5px; color: #b9c8de; }
 .agent-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #5fe3a1; box-shadow: 0 0 0 2px #5fe3a133; }
 .resting .agent-dot { background: #8a98ad; box-shadow: none; }
-.resting .agent-tag { opacity: .7; }
+.resting .agent-tag { opacity: .5; }
+
+/*
+ * Speech bubble: only shown once the companion has run to her spot on the floor, where it
+ * replaces the name tag above her head. --pop gives it a short overshoot as she lands.
+ */
+.agent-bubble { display: none; position: absolute; left: 50%; bottom: calc(100% - 4px); width: 224px; box-sizing: border-box;
+  transform: translateX(-50%) rotate(calc(var(--angle) * -1deg)) scale(var(--pop)); transform-origin: 50% 100%;
+  padding: 6px 10px 7px; border-radius: 16px; background: #fffaf699; color: #3a2433; border: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  opacity: .88; text-shadow: 0 0 2px #fff, 0 0 4px #fffc; font-family: "M PLUS Rounded 1c", system-ui, sans-serif; --accent: #5fd39a; }
+.agent-bubble::after { content: ""; position: absolute; left: calc(50% - 7px); bottom: -9px; width: 12px; height: 12px;
+  background: #fffaf699; border: solid color-mix(in srgb, var(--accent) 75%, transparent); clip-path: polygon(100% 0, 100% 100%, 0 100%); border-width: 0 2px 2px 0; transform: rotate(45deg); border-bottom-right-radius: 3px; }
+.calling .agent-bubble { display: block; }
+.calling .agent-tag { display: none; }
+.agent-bubble.kind-question { --accent: #ff7aa8; }
+.agent-bubble.kind-approval { --accent: #ffb02e; }
+.agent-bubble.kind-stopped { --accent: #ff5d5d; }
+.agent-bubble b { display: flex; align-items: center; gap: 5px; font-size: 11px; line-height: 1.2; font-weight: 800; }
+.agent-bubble b i { flex: none; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); color: #fff; font: 900 9px/1 system-ui, sans-serif; }
+.agent-bubble p { margin: 3px 0 2px; font-size: 10.5px; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; overflow: hidden; }
+.agent-bubble.kind-done p { -webkit-line-clamp: 2; }
+.agent-bubble small { display: block; font-size: 8.5px; color: #8a6f80; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
