@@ -17,7 +17,10 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 .desktop-agent.claude { --coat: #ffb48a; }
 
 /* Chibi art (components/Chibi.tsx) carries its own colours; this file only moves the parts. */
-.agent-art { display: block; width: 88px; height: 110px; overflow: visible; transform: scaleX(var(--facing)); transform-origin: 50% 100%; }
+.agent-art { display: block; width: 88px; height: 110px; overflow: visible; transform: scaleX(var(--facing)); transform-origin: 50% 100%;
+  opacity: var(--see-through); }
+/* See-through, so the windows and text underneath stay readable. */
+.desktop-agents-window { --see-through: .55; }
 .agent-art * { transform-box: view-box; }
 .agent-shadow { fill: #08102470; }
 .agent-emblem { font: 700 5px/1 system-ui, sans-serif; fill: #fff; opacity: .75; text-anchor: middle; }
@@ -54,7 +57,7 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 /* Resting: the session is quiet, so the companion dozes in place with eyes shut. */
 .agent-z { font: 700 11px/1 system-ui, sans-serif; fill: #dce8ff; stroke: #3a2433; stroke-width: .6; display: none; }
 .resting .agent-z { display: inline; opacity: calc(1 - var(--doze)); transform: translate(calc(var(--doze) * 6px), calc(var(--doze) * -8px)); }
-.resting .agent-art { opacity: .85; }
+.resting .agent-art { opacity: calc(var(--see-through) * .75); }
 
 /*
  * The name tag counter-rotates so it always reads upright. On the floor and ceiling it sits
@@ -62,7 +65,7 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
  */
 .agent-tag { position: absolute; left: calc(50% + var(--k) * 42px); top: calc(-16px + var(--k) * 46px); display: flex; align-items: center; gap: 5px; max-width: 124px;
   transform: translate(-50%, -50%) rotate(calc(var(--angle) * -1deg)); padding: 3px 8px 3px 6px; border-radius: 999px;
-  background: #0f1a30e6; border: 1px solid color-mix(in srgb, var(--coat) 70%, transparent); color: #f4f7ff;
+  background: #0f1a3080; border: 1px solid color-mix(in srgb, var(--coat) 50%, transparent); opacity: .8; color: #f4f7ff;
   font-family: system-ui, sans-serif; }
 .agent-tag span { min-width: 0; line-height: 1.15; }
 .agent-tag strong, .agent-tag small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -70,7 +73,7 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
 .agent-tag small { font-size: 8.5px; color: #b9c8de; }
 .agent-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #5fe3a1; box-shadow: 0 0 0 2px #5fe3a133; }
 .resting .agent-dot { background: #8a98ad; box-shadow: none; }
-.resting .agent-tag { opacity: .7; }
+.resting .agent-tag { opacity: .5; }
 
 /*
  * Speech bubble: only shown once the companion has run to her spot on the floor, where it
@@ -78,10 +81,10 @@ html.desktop-agents-window, .desktop-agents-window body, .desktop-agents-window 
  */
 .agent-bubble { display: none; position: absolute; left: 50%; bottom: calc(100% - 4px); width: 224px; box-sizing: border-box;
   transform: translateX(-50%) rotate(calc(var(--angle) * -1deg)) scale(var(--pop)); transform-origin: 50% 100%;
-  padding: 6px 10px 7px; border-radius: 16px; background: #fffaf6; color: #3a2433; border: 2px solid var(--accent, var(--coat));
-  box-shadow: 0 3px 0 #3a243326; font-family: "M PLUS Rounded 1c", system-ui, sans-serif; --accent: #5fd39a; }
+  padding: 6px 10px 7px; border-radius: 16px; background: #fffaf699; color: #3a2433; border: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  opacity: .88; text-shadow: 0 0 2px #fff, 0 0 4px #fffc; font-family: "M PLUS Rounded 1c", system-ui, sans-serif; --accent: #5fd39a; }
 .agent-bubble::after { content: ""; position: absolute; left: calc(50% - 7px); bottom: -9px; width: 12px; height: 12px;
-  background: #fffaf6; border: solid var(--accent); border-width: 0 2px 2px 0; transform: rotate(45deg); border-bottom-right-radius: 3px; }
+  background: #fffaf699; border: solid color-mix(in srgb, var(--accent) 75%, transparent); clip-path: polygon(100% 0, 100% 100%, 0 100%); border-width: 0 2px 2px 0; transform: rotate(45deg); border-bottom-right-radius: 3px; }
 .calling .agent-bubble { display: block; }
 .calling .agent-tag { display: none; }
 .agent-bubble.kind-question { --accent: #ff7aa8; }
