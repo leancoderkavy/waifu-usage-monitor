@@ -304,8 +304,11 @@ pub fn sync_logins(app: &AppHandle) -> Result<(Vec<Account>, Vec<Account>)> {
             continue;
         }
         // Only grow providers the user still has cards for, and never re-add a removed one.
+        // One card per login: a second folder (or a config caught mid-rewrite) reporting an
+        // identity that already has a card must not add a duplicate.
         let tag = format!("{p:?}:{}", login.identity);
-        if !accounts.iter().any(|a| a.provider == p) || skip.contains(&tag) {
+        let known = accounts.iter().any(|a| a.provider == p && a.identity.as_deref() == Some(login.identity.as_str()));
+        if known || !accounts.iter().any(|a| a.provider == p) || skip.contains(&tag) {
             continue;
         }
         let acc = Account {

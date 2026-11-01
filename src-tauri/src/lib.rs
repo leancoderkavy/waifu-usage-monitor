@@ -1,4 +1,5 @@
 mod custom;
+mod desktop_agents;
 mod feeds;
 mod llm;
 mod model;
@@ -169,8 +170,33 @@ async fn llm_available(url: String, model: String) -> bool {
 
 /// Codex and Claude Code sessions from the last 24 hours, plus loaded Ollama models.
 #[tauri::command]
-async fn list_sessions() -> Vec<sessions::Session> {
-    sessions::list(providers::codex::default_home(), providers::claude::default_home()).await
+async fn list_sessions(app: AppHandle) -> Vec<sessions::Session> {
+    // Every companion strip polls this; share one scan of the session logs between them.
+    static CACHE: std::sync::Mutex<Option<(std::time::Instant, Vec<sessions::Session>)>> = std::sync::Mutex::new(None);
+    if let Some((at, list)) = CACHE.lock().unwrap().as_ref() {
+        if at.elapsed() < std::time::Duration::from_secs(5) { return list.clone(); }
+    }
+    let list = scan_sessions(&app).await;
+    *CACHE.lock().unwrap() = Some((std::time::Instant::now(), list.clone()));
+    list
+}
+
+async fn scan_sessions(app: &AppHandle) -> Vec<sessions::Session> {
+    let accounts = store::load(app).unwrap_or_default();
+    let mut codex_homes = vec![providers::codex::default_home()];
+    let mut claude_homes = vec![providers::claude::default_home()];
+    for account in accounts {
+        if let Some(home) = account.codex_home.filter(|h| !h.trim().is_empty()) {
+            let homes = match account.provider {
+                Provider::Codex => &mut codex_homes,
+                Provider::Claude => &mut claude_homes,
+                _ => continue,
+            };
+            let path = std::path::PathBuf::from(home.trim());
+            if !homes.contains(&path) { homes.push(path); }
+        }
+    }
+    sessions::list_homes(codex_homes, claude_homes).await
 }
 
 /// CPU, RAM and GPU load plus the heaviest processes.
@@ -302,7 +328,8 @@ fn set_island_expanded(app: AppHandle, expanded: bool, position: String) -> Resu
         return Err("Island position must be top or bottom".into());
     }
     let window = app.get_webview_window("island").ok_or("Island window missing")?;
-    let width = 680.0;
+    // Wide enough for every provider pill with its reset countdown.
+    let width = 860.0;
     let height = if expanded { 520.0 } else { 54.0 };
     window.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
     if let Some(monitor) = window.current_monitor().map_err(|e| e.to_string())? {
@@ -346,10 +373,16 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             set_island_expanded(app.handle().clone(), false, "top".into()).map_err(std::io::Error::other)?;
+            if desktop_agents::enabled(app.handle()) {
+                if let Err(e) = desktop_agents::apply(app.handle(), true) {
+                    eprintln!("Desktop agents unavailable: {e}");
+                }
+            }
             let show = MenuItem::with_id(app, "show", "Open", true, None::<&str>)?;
             let refresh = MenuItem::with_id(app, "refresh", "Refresh now", true, None::<&str>)?;
+            let companions = MenuItem::with_id(app, "companions", "Show / hide desktop agents", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &refresh, &quit])?;
+            let menu = Menu::with_items(app, &[&show, &refresh, &companions, &quit])?;
 
             TrayIconBuilder::with_id("main")
                 .icon(Image::from_bytes(include_bytes!("../../wallpaper/windows11-kosmos/status/standby.png"))?)
@@ -358,6 +391,15 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, e| match e.id.as_ref() {
                     "show" => show_main(app),
+                    "companions" => {
+                        let handle = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let enabled = !desktop_agents::is_open(&handle);
+                            if let Err(e) = desktop_agents::set_desktop_agents(handle, enabled).await {
+                                eprintln!("Desktop agents: {e}");
+                            }
+                        });
+                    }
                     "refresh" => {
                         let _ = app.emit("tray-refresh", ());
                     }
@@ -418,6 +460,8 @@ pub fn run() {
             llm_line,
             llm_available,
             list_sessions,
+            desktop_agents::desktop_agents_enabled,
+            desktop_agents::set_desktop_agents,
             system_stats,
             global_resets,
             inspect_post,
