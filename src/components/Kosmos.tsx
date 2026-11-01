@@ -28,11 +28,11 @@ const TRIM = "#3a7bff";
 const ACCENT = "#e8304f";
 
 export const HUD_COLOR: Record<Mood, string> = {
-  happy: "#35c7e8",
-  calm: "#35c7e8",
+  happy: "#a8cef0",
+  calm: "#a8cef0",
   love: "#ff7aa8",
-  worried: "#ffb13d",
-  panic: "#ff3b5c",
+  worried: "#e39124",
+  panic: "#e0323c",
   pouty: "#b36bff",
   sleepy: "#8a94b8",
 };

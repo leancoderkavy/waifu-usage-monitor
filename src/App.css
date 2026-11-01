@@ -4,9 +4,10 @@
   display: flex;
   flex-direction: column;
   background:
-    linear-gradient(rgba(58, 123, 255, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
-    linear-gradient(90deg, rgba(58, 123, 255, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
-    linear-gradient(160deg, #eef4ff 0%, #f8faff 45%, #e3ecfb 100%);
+    linear-gradient(rgba(168, 206, 240, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(168, 206, 240, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    radial-gradient(ellipse 60% 80% at 85% 0%, rgba(160, 60, 150, 0.22), transparent 70%),
+    linear-gradient(160deg, #161829 0%, #0d0f1e 60%, #161829 100%);
 }
 .app::before {
   content: "";
@@ -23,7 +24,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  box-shadow: inset 0 0 110px rgba(255, 40, 80, 0.4);
+  box-shadow: inset 0 0 110px rgba(224, 50, 60, 0.4);
   opacity: 0;
   will-change: opacity;
   animation: alarm 1.4s ease-in-out infinite;
@@ -60,7 +61,7 @@
   padding-left: 14px;
   /* Near-opaque instead of a live backdrop blur, which re-blurred everything
      behind it on every animation frame. */
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--glass);
   border-bottom: 1px solid var(--edge);
 }
 .titlebar-title {
@@ -134,7 +135,7 @@ main {
   width: 100%;
   max-height: 68%;
   cursor: pointer;
-  filter: drop-shadow(0 12px 22px rgba(40, 80, 160, 0.25));
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.25));
   overflow: visible;
 }
 .kosmos3d {
@@ -183,7 +184,7 @@ main {
   align-items: center;
   padding: 6px 30px;
   clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-  background: linear-gradient(90deg, var(--ink), var(--accent-strong));
+  background: linear-gradient(90deg, var(--bg), var(--accent-strong));
   color: #fff;
   border-bottom: 3px solid var(--hud);
 }
@@ -208,9 +209,9 @@ main {
   margin: 40px 0 8px;
   padding: 22px 18px 16px;
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--glass);
   border-left: 4px solid var(--hud);
-  box-shadow: 0 8px 24px rgba(40, 80, 160, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   transition: border-color 0.6s;
 }
 .bubble-name {
@@ -218,7 +219,8 @@ main {
   top: 0;
   left: 0;
   padding: 3px 14px;
-  background: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--edge);
   color: #fff;
   font-family: var(--mono);
   font-weight: 700;
@@ -371,9 +373,9 @@ main {
   padding: 14px 16px;
   clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
   /* No backdrop blur: see .titlebar. */
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--glass);
   border: 1px solid var(--edge);
-  box-shadow: 0 6px 20px rgba(40, 80, 160, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 .card::before {
   content: "";
@@ -383,7 +385,7 @@ main {
   background: linear-gradient(180deg, var(--brand), var(--brand-glow));
 }
 .card-error {
-  border-color: #ffc9d2;
+  border-color: rgba(224, 50, 60, 0.45);
 }
 .card-head {
   display: flex;
@@ -473,7 +475,7 @@ main {
 }
 @keyframes glow {
   50% {
-    box-shadow: 0 0 14px rgba(58, 123, 255, 0.45);
+    box-shadow: 0 0 14px rgba(168, 206, 240, 0.45);
   }
 }
 .card-err {
@@ -546,7 +548,7 @@ main {
 .hidden-meters button {
   padding: 1px 7px;
   border: 1px dashed var(--edge);
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(33, 43, 67, 0.55);
   font: inherit;
   font-size: 11px;
   color: var(--accent);
@@ -599,7 +601,7 @@ main {
   position: relative;
   height: 10px;
   margin-top: 4px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--glass);
   border: 1px solid var(--edge);
 }
 .meter-fill {
@@ -620,13 +622,13 @@ main {
   animation: shine 3s linear infinite;
 }
 .meter.good .meter-fill {
-  background-image: linear-gradient(90deg, #8fb6ff, #3a7bff, #dce8ff, #8fb6ff);
+  background-image: linear-gradient(90deg, #5c77d0, #a8cef0, #eef1f6, #5c77d0);
 }
 .meter.warn .meter-fill {
-  background-image: linear-gradient(90deg, #ffd27a, #e89a1c, #ffe7b8, #ffd27a);
+  background-image: linear-gradient(90deg, #a8620f, #e39124, #fef771, #a8620f);
 }
 .meter.critical .meter-fill {
-  background-image: linear-gradient(90deg, #ff8fa1, #e8304f, #ffc0cb, #ff8fa1);
+  background-image: linear-gradient(90deg, #8a1a22, #e0323c, #ff8a90, #8a1a22);
 }
 .meter-heart {
   position: absolute;
@@ -635,7 +637,7 @@ main {
   transform: translateY(-50%);
   font-size: 13px;
   color: var(--accent);
-  text-shadow: 0 0 6px #fff;
+  text-shadow: 0 0 6px var(--accent);
   animation: beat 1.4s ease-in-out infinite;
 }
 .meter.critical .meter-heart {
@@ -725,7 +727,7 @@ footer {
   justify-content: space-between;
   align-items: flex-start;
   border: 1px solid var(--edge);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -737,8 +739,8 @@ footer {
   opacity: 0.35;
 }
 .cal-day.has {
-  background: color-mix(in srgb, var(--c) 10%, white);
-  border-color: color-mix(in srgb, var(--c) 45%, white);
+  background: color-mix(in srgb, var(--c) 10%, var(--bg));
+  border-color: color-mix(in srgb, var(--c) 45%, var(--bg));
 }
 .cal-day.today {
   outline: 2px solid var(--accent);
@@ -749,7 +751,7 @@ footer {
   color: var(--accent);
 }
 .cal-day.sel {
-  box-shadow: 0 0 0 2px var(--hud), 0 6px 16px rgba(40, 80, 160, 0.2);
+  box-shadow: 0 0 0 2px var(--hud), 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 .cal-dots {
   display: flex;
@@ -764,7 +766,7 @@ footer {
   padding: 1px;
   border: 1px solid var(--c);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
 }
 .provider-icon {
   display: block;
@@ -796,7 +798,7 @@ footer {
   gap: 10px;
   margin-bottom: 6px;
   padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--glass);
   border-left: 3px solid var(--c);
 }
 .cal-event-icon {
@@ -808,7 +810,7 @@ footer {
   padding: 3px;
   border: 1px solid var(--c);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
 }
 .cal-event div {
   display: flex;
@@ -829,7 +831,7 @@ footer {
   flex: 1;
   padding: 7px 10px;
   border: 1px solid var(--edge);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--glass);
   font: inherit;
   font-size: 12px;
   color: var(--ink);
@@ -953,7 +955,7 @@ footer {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--glass);
   border-left: 3px solid var(--brand);
 }
 .session.done {
@@ -1009,7 +1011,8 @@ footer {
   font-size: 11px;
   font-weight: 700;
   color: #fff;
-  background: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--edge);
 }
 .model-chip.big {
   padding: 3px 9px;
@@ -1076,7 +1079,7 @@ footer {
   fill: none;
   stroke-width: 8;
   stroke-linecap: butt;
-  filter: drop-shadow(0 0 4px rgba(58, 123, 255, 0.4));
+  filter: drop-shadow(0 0 4px rgba(168, 206, 240, 0.4));
 }
 .ring-num {
   text-anchor: middle;
@@ -1105,7 +1108,7 @@ footer {
 }
 .spark-box {
   padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--glass);
   border: 1px solid var(--edge);
 }
 .spark-box span {
@@ -1148,7 +1151,7 @@ footer {
   gap: 8px;
   padding: 5px 10px;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--glass);
 }
 .proc strong {
   overflow: hidden;
@@ -1168,7 +1171,7 @@ footer {
   font-weight: 800;
   font-size: 13px;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
   clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
   cursor: pointer;
   transition: transform 0.15s, filter 0.15s;
@@ -1182,12 +1185,12 @@ footer {
   cursor: default;
 }
 .btn.primary {
-  color: #fff;
+  color: var(--bg);
   border-color: transparent;
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 .btn.ghost {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(33, 43, 67, 0.55);
 }
 .btn.danger {
   color: #fff;
@@ -1217,7 +1220,7 @@ footer {
   z-index: 20;
   display: grid;
   place-items: center;
-  background: rgba(20, 30, 60, 0.35);
+  background: rgba(11, 13, 26, 0.6);
   backdrop-filter: blur(4px);
 }
 .modal {
@@ -1225,9 +1228,10 @@ footer {
   max-height: 88vh;
   overflow-y: auto;
   padding: 18px 22px 20px;
-  background: #fbfcff;
-  border-top: 4px solid var(--accent);
-  box-shadow: 0 20px 60px rgba(20, 40, 100, 0.35);
+  background: linear-gradient(180deg, #212b43, #161829);
+  border: 1px solid var(--edge);
+  border-top: 2px solid var(--gold);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 .modal-head {
   display: flex;
@@ -1277,7 +1281,7 @@ footer {
   font: inherit;
   font-weight: 400;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
   outline: none;
   user-select: text;
 }
@@ -1309,7 +1313,7 @@ footer {
 }
 .help code {
   padding: 1px 5px;
-  background: #fff;
+  background: var(--surface);
   color: var(--accent);
 }
 .provider-pick {
@@ -1323,7 +1327,7 @@ footer {
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--edge);
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -1377,7 +1381,7 @@ footer {
   max-height: 100%;
   object-fit: contain;
   animation: portrait-float 4s ease-in-out infinite;
-  filter: drop-shadow(0 12px 24px rgba(58, 123, 255, 0.25));
+  filter: drop-shadow(0 12px 24px rgba(168, 206, 240, 0.25));
 }
 .custom-portrait img.talking {
   animation: portrait-float 4s ease-in-out infinite, portrait-talk 0.35s ease-in-out infinite;
@@ -1398,13 +1402,13 @@ footer {
 .waifu-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
 .waifu-choice {
   display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px;
-  font: inherit; color: var(--ink); background: rgba(255, 255, 255, 0.8);
+  font: inherit; color: var(--ink); background: var(--glass);
   border: 1px solid var(--edge); border-radius: 12px; cursor: pointer;
   transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .waifu-choice:hover { transform: translateY(-2px); border-color: var(--accent); }
-.waifu-choice.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); background: #fff; }
-.waifu-choice img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--edge); }
+.waifu-choice.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); background: var(--surface); }
+.waifu-choice img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--panel-solid); box-shadow: 0 0 0 1px var(--edge); }
 .waifu-choice b { font-size: 12px; }
 .waifu-choice small { font-size: 9.5px; line-height: 1.2; text-align: center; color: var(--ink-soft); }
 
@@ -1467,4 +1471,72 @@ footer {
 @keyframes k-lock-r {
   0%, 100% { rotate: 1deg; }
   50% { rotate: -1.5deg; }
+}
+
+/* KOS-MOS HUD details: scanlines, gold hairlines, ice glow. */
+.app::before {
+  background:
+    repeating-linear-gradient(0deg, rgba(168, 206, 240, 0.035) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 20% 60%, color-mix(in srgb, var(--hud) 18%, transparent), transparent 55%);
+}
+.titlebar {
+  background: linear-gradient(180deg, rgba(33, 43, 67, 0.92), rgba(22, 24, 41, 0.94));
+  border-bottom: 1px solid rgba(227, 145, 36, 0.55);
+}
+.titlebar-title {
+  color: #eef1f6;
+  letter-spacing: 0.24em;
+  text-shadow: 0 0 6px rgba(168, 206, 240, 0.55);
+}
+.titlebar-buttons .close:hover {
+  background: var(--danger);
+}
+.card,
+.bubble,
+.modal {
+  border-top-color: rgba(168, 206, 240, 0.45);
+  box-shadow: inset 0 1px 0 rgba(168, 206, 240, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.card::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(168, 206, 240, 0.7), transparent);
+  pointer-events: none;
+}
+.tabs {
+  border-bottom-color: rgba(227, 145, 36, 0.45);
+}
+.tab-underline {
+  box-shadow: 0 0 8px var(--hud);
+}
+.hero h1 {
+  color: #eef1f6;
+  letter-spacing: 0.24em;
+}
+.meter-track {
+  background: var(--surface);
+}
+.meter-shine::before {
+  background: linear-gradient(90deg, transparent, rgba(254, 247, 113, 0.35), transparent);
+}
+.btn {
+  background: var(--glass);
+}
+.btn.primary {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 10px rgba(168, 206, 240, 0.35);
+}
+.btn.ghost {
+  background: transparent;
+}
+.modal select option {
+  background: var(--panel-solid);
+}
+.cards::-webkit-scrollbar-track,
+.calendar-wrap::-webkit-scrollbar-track {
+  background: transparent;
 }

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KOS-MOS // Windows UI design pack</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background:#090e24; color:#e8f7ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(circle at 70% 10%,#213762 0,transparent 35%),#090e24; }
+    main { max-width:1440px; padding:36px clamp(20px,4vw,64px) 90px; margin:auto; }
+    .eyebrow { color:#35c7e8; font:600 12px Consolas,monospace; letter-spacing:.24em; text-transform:uppercase; }
+    h1 { font-size:clamp(38px,6vw,72px); font-weight:300; letter-spacing:.12em; margin:8px 0; }
+    h2 { font-size:24px; font-weight:500; margin:0 0 8px; }
+    p { color:#adbed5; line-height:1.5; margin:0; }
+    .hero { min-height:390px; border:1px solid #4b8fb4; border-radius:28px; overflow:hidden; display:flex; align-items:center; padding:42px; background:linear-gradient(90deg,rgba(5,10,35,.96),rgba(5,10,35,.7) 40%,transparent 75%),url('../kosmos-5k.png') center 38%/cover; box-shadow:0 30px 100px #0008; }
+    .hero-inner { max-width:560px; }
+    .hero p { font-size:17px; color:#d3e6f6; }
+    .rule { height:3px; max-width:260px; margin:25px 0; background:linear-gradient(90deg,#35c7e8,#e8304f,transparent); }
+    .pill { display:inline-block; font:12px Consolas,monospace; color:#bff4ff; border:1px solid #35c7e8; border-radius:100px; padding:8px 14px; margin-top:22px; }
+    section { margin-top:64px; }
+    .section-head { display:flex; justify-content:space-between; gap:24px; align-items:end; padding-bottom:15px; border-bottom:1px solid #244665; margin-bottom:20px; }
+    .section-head p { max-width:620px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; }
+    .tile { min-height:165px; border:1px solid #315774; border-radius:18px; background:linear-gradient(155deg,#172a50,#101a38 65%,#20152f); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+    .tile img { width:92px; height:92px; object-fit:contain; }
+    .tile span { color:#d6e9f6; font-size:13px; letter-spacing:.07em; }
+    .cursor-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:14px; }
+    .cursor { min-height:134px; border:1px solid #315774; border-radius:16px; background:#d9e9f0; color:#172445; display:grid; place-items:center; padding:12px; }
+    .cursor img { width:64px; height:64px; }
+    .cursor span { font:600 12px Consolas,monospace; text-transform:uppercase; }
+    .duo { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:20px; }
+    .panel { border:1px solid #315774; border-radius:22px; background:linear-gradient(145deg,#17284d,#0d1632); padding:24px; overflow:hidden; }
+    .panel h3 { margin:0 0 12px; font-size:18px; font-weight:500; }
+    .terminal { padding:0; }
+    .tabs { height:50px; display:flex; align-items:center; gap:8px; padding:0 16px; background:#101936; }
+    .tab { background:#233d65; border-top:2px solid #35c7e8; border-radius:10px 10px 0 0; padding:12px 18px; font:13px Consolas,monospace; }
+    pre { font:15px/1.7 Consolas,monospace; white-space:pre-wrap; margin:0; padding:26px; color:#e8f7ff; min-height:220px; background:#0b102a; }
+    .cyan { color:#35c7e8; } .red { color:#ff7490; } .green { color:#91f2d2; }
+    .portrait { display:flex; align-items:center; gap:24px; }
+    .portrait img { width:144px; height:144px; border-radius:50%; flex:none; }
+    .palette { display:flex; gap:8px; margin-top:25px; }
+    .swatch { width:38px; height:38px; border-radius:10px; border:1px solid #fff6; }
+    .states { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .state { aspect-ratio:16/10; position:relative; border:1px solid #315774; border-radius:20px; overflow:hidden; background:url('../animated/thumb.jpg') center/cover; }
+    .state::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg,#07112a88,transparent); }
+    .state img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; }
+    .state-label { display:block; margin-top:12px; color:#d6e9f6; font:13px Consolas,monospace; text-transform:uppercase; letter-spacing:.12em; }
+    .widget { max-width:380px; background:linear-gradient(145deg,#22335a,#111c3d); border:1px solid #4e819e; border-radius:22px; padding:22px; box-shadow:0 15px 55px #0008; }
+    .widget-top { display:flex; align-items:center; gap:12px; padding-bottom:17px; border-bottom:1px solid #3b6680; }
+    .widget-top img { width:44px; height:44px; }
+    .widget b { letter-spacing:.12em; font-size:14px; }
+    .widget small { display:block; color:#35c7e8; letter-spacing:.14em; margin-top:4px; }
+    .widget-row { display:flex; justify-content:space-between; padding:14px 0; border-bottom:1px solid #254460; font-size:14px; }
+    .widget-row span:last-child { color:#aec4d9; }
+    .widget-foot { color:#bff4ff; font:12px Consolas,monospace; padding-top:17px; }
+    .notification { width:min(100%,364px); border-radius:18px; }
+    .concept { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+    .footnote { font:12px/1.6 Consolas,monospace; color:#8ba8c2; margin-top:20px; }
+    .recovery { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin-top:18px; }
+    .recovery-item { display:flex; align-items:flex-start; gap:15px; border:1px solid #315774; border-radius:16px; background:#111c3b; padding:17px; }
+    .recovery-item img { width:42px; height:42px; flex:none; }
+    .recovery-item b { display:block; font-size:14px; margin-bottom:5px; }
+    .recovery-item p { font-size:13px; }
+    @media(max-width:780px) { .hero { min-height:350px; padding:26px; background-position:61% 40%; } .duo { grid-template-columns:1fr; } .states { grid-template-columns:1fr; } .section-head { display:block; } .section-head p { margin-top:10px; } }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+  </style>
+</head>
+<body><main>
+  <header class="hero"><div class="hero-inner"><div class="eyebrow">Windows 11 / Personal fan art</div><h1>KOS-MOS</h1><div class="rule"></div><p>A complete desktop language built from the existing 5K art: ice blue interface lines, navy armor, and an R-core red reserved for warnings.</p><span class="pill">UI DESIGN PACK // 02</span></div></header>
+
+  <section><div class="section-head"><div><div class="eyebrow">01 / Shell</div><h2>Expanded icon system</h2></div><p>Original desktop icons plus six new marks. Every icon includes a vector master and multi-size Windows ICO.</p></div><div class="grid">
+    <div class="tile"><img src="icons/system.png" alt=""><span>System</span></div><div class="tile"><img src="icons/documents.png" alt=""><span>Documents</span></div><div class="tile"><img src="icons/downloads.png" alt=""><span>Downloads</span></div><div class="tile"><img src="icons/pictures.png" alt=""><span>Pictures</span></div><div class="tile"><img src="icons/music.png" alt=""><span>Music</span></div><div class="tile"><img src="icons/recycle.png" alt=""><span>Recycle</span></div><div class="tile"><img src="icons/videos.png" alt=""><span>Videos</span></div><div class="tile"><img src="icons/drive.png" alt=""><span>Drive</span></div><div class="tile"><img src="icons/archive.png" alt=""><span>Archive</span></div><div class="tile"><img src="icons/code.png" alt=""><span>Code</span></div><div class="tile"><img src="icons/shortcut.png" alt=""><span>Shortcut</span></div><div class="tile"><img src="icons/terminal.png" alt=""><span>Terminal</span></div>
+  </div></section>
+
+  <section><div class="section-head"><div><div class="eyebrow">02 / Input</div><h2>Cursor suite</h2></div><p>Bright silhouettes for visibility on the dark wallpaper, with cyan detail and a red core. The theme maps eight Windows cursor roles.</p></div><div class="cursor-grid">
+    <div class="cursor"><img src="cursors/arrow.png" alt=""><span>Arrow</span></div><div class="cursor"><img src="cursors/text.png" alt=""><span>Text</span></div><div class="cursor"><img src="cursors/busy.png" alt=""><span>Busy</span></div><div class="cursor"><img src="cursors/working.png" alt=""><span>Working</span></div><div class="cursor"><img src="cursors/crosshair.png" alt=""><span>Crosshair</span></div><div class="cursor"><img src="cursors/hand.png" alt=""><span>Hand</span></div><div class="cursor"><img src="cursors/unavailable.png" alt=""><span>Unavailable</span></div><div class="cursor"><img src="cursors/move.png" alt=""><span>Move</span></div>
+  </div></section>
+
+  <section><div class="section-head"><div><div class="eyebrow">03 / Workspace</div><h2>Terminal and identity</h2></div><p>The Terminal scheme keeps code legible. The account portrait is a crop of the original wallpaper illustration.</p></div><div class="duo">
+    <div class="panel terminal"><div class="tabs"><span class="tab">KOS-MOS // PowerShell</span></div><pre><span class="cyan">PS D:\&gt;</span> codex status
+<span class="green">✓</span> link established
+<span class="cyan">&gt;</span> usage monitor online
+<span class="red">●</span> R-CORE / standby
+
+<span class="cyan">PS D:\&gt;</span> <span class="red">▋</span></pre></div>
+    <div class="panel"><h3>Account portrait</h3><div class="portrait"><img src="kosmos-account-portrait.png" alt="KOS-MOS portrait from the existing wallpaper"><p>512 × 512 source crop, ready for the Windows account image picker.</p></div><div class="palette"><span class="swatch" style="background:#0d1240"></span><span class="swatch" style="background:#35c7e8"></span><span class="swatch" style="background:#bff4ff"></span><span class="swatch" style="background:#e8304f"></span></div></div>
+  </div></section>
+
+  <section><div class="section-head"><div><div class="eyebrow">04 / Motion language</div><h2>Live wallpaper states</h2></div><p>Transparent 5K overlays for the existing Lively art. These are visual states; a future data adapter should select them from actual usage events.</p></div><div class="states">
+    <div><div class="state"><img src="live-states/standby.svg" alt="Standby overlay over live wallpaper thumbnail"></div><span class="state-label">Standby / link ready</span></div>
+    <div><div class="state"><img src="live-states/working.svg" alt="Monitoring overlay over live wallpaper thumbnail"></div><span class="state-label">Monitoring / sync</span></div>
+    <div><div class="state"><img src="live-states/warning.svg" alt="Limit warning overlay over live wallpaper thumbnail"></div><span class="state-label">Limit warning / action</span></div>
+  </div></section>
+
+  <section><div class="section-head"><div><div class="eyebrow">05 / Status</div><h2>Tray, notification, widget</h2></div><p>Small core marks scale for the tray. The widget is a design preview that needs a packaged Windows widget provider for real usage data.</p></div><div class="concept">
+    <div class="panel"><h3>Tray states</h3><div style="display:flex;gap:22px"><div><img width="64" height="64" src="status/standby.png" alt="Standby tray mark"><span class="state-label">Standby</span></div><div><img width="64" height="64" src="status/working.png" alt="Working tray mark"><span class="state-label">Working</span></div><div><img width="64" height="64" src="status/warning.png" alt="Warning tray mark"><span class="state-label">Warning</span></div></div></div>
+    <div class="panel"><h3>Notification hero</h3><img class="notification" src="status/notification-hero.png" alt="KOS-MOS usage alert notification hero graphic"></div>
+    <div class="widget"><div class="widget-top"><img src="status/standby.png" alt=""><div><b>KOS-MOS // LLM LINK</b><small>DESIGN PREVIEW</small></div></div><div class="widget-row"><span>Claude</span><span>Connect account</span></div><div class="widget-row"><span>Codex</span><span>Connect account</span></div><div class="widget-row"><span>Cursor</span><span>Connect account</span></div><div class="widget-foot">OPEN APP → LIMIT DETAILS</div></div>
+  </div><div class="recovery">
+    <div class="recovery-item"><img src="status/sign-in.png" alt=""><div><b>Codex · sign in required</b><p>Saved login was revoked. Open Codex and sign in to that account, then refresh the monitor.</p></div></div>
+    <div class="recovery-item"><img src="status/sign-in.png" alt=""><div><b>Claude · sign in required</b><p>Saved login expired. Sign in through Claude Code once, then refresh the monitor.</p></div></div>
+    <div class="recovery-item"><img src="status/rate-limited.png" alt=""><div><b>Provider · retry later</b><p>HTTP 429. Keep the last reading marked as stale and wait for an automatic check.</p></div></div>
+  </div><p class="footnote">Recovery cards are presentation concepts based on the observed errors. They contain no live provider values. This page does not change Windows settings.</p></section>
+</main></body></html>

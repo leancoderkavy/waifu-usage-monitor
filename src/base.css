@@ -6,21 +6,27 @@
 @import "@fontsource/orbitron/latin-700.css";
 
 :root {
-  /* One blue family, neutrals, and two status colours. Nothing else. */
-  --accent: #3a7bff;
-  --accent-strong: #2a58c4;
-  --accent-soft: #e3ecff;
-  --accent-2: #7aa7ff;
-  --hud: #5b93ff;
-  --ink: #1f2a44;
-  --ink-soft: #6b7896;
-  --surface: #eef3fc;
-  --glass: rgba(255, 255, 255, 0.7);
-  --edge: #c9d5ec;
-  --edge-strong: #b3c5e6;
-  --warn: #e89a1c;
-  --danger: #e8304f;
-  --danger-soft: #ffe8ec;
+  /* KOS-MOS HUD: navy glass, ice and periwinkle, gold hairlines, one red. */
+  --bg: #161829;
+  --bg-deep: #0b0d1a;
+  --panel: rgba(33, 43, 67, 0.78);
+  --panel-solid: #212b43;
+  --accent: #a8cef0;
+  --accent-strong: #5c77d0;
+  --accent-soft: rgba(92, 119, 208, 0.22);
+  --accent-2: #5c77d0;
+  --hud: #a8cef0;
+  --gold: #e39124;
+  --glow: #fef771;
+  --ink: #f2ede9;
+  --ink-soft: rgba(242, 237, 233, 0.6);
+  --surface: rgba(11, 13, 26, 0.7);
+  --glass: rgba(33, 43, 67, 0.72);
+  --edge: rgba(168, 206, 240, 0.2);
+  --edge-strong: rgba(168, 206, 240, 0.4);
+  --warn: #e39124;
+  --danger: #e0323c;
+  --danger-soft: rgba(224, 50, 60, 0.18);
   --red: var(--danger);
   --critical: var(--danger);
   --mono: "Orbitron", "Consolas", monospace;

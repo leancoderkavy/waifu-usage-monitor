@@ -4,6 +4,7 @@
 
 const W = 5120;
 const H = 2880;
+const lockScreen = process.argv.includes("--lock-screen");
 
 const HAIR = "#8cc4f0";
 const HAIR_DARK = "#4a7fc0";
@@ -24,7 +25,7 @@ const f = (n) => n.toFixed(1);
 
 // Character placement: local 300x420 space scaled up, anchored to the bottom edge.
 const S = 6.6;
-const TX = 2330;
+const TX = lockScreen ? 2730 : 2330;
 const TY = H - 420 * S + 30;
 const HEAD = { x: TX + 150 * S, y: TY + 165 * S };
 
@@ -308,7 +309,7 @@ ${bokeh()}
 ${planet()}
 <circle cx="${HEAD.x}" cy="${HEAD.y}" r="1500" fill="url(#halo)"/>
 ${hudRings()}
-${title()}
+${lockScreen ? "" : title()}
 <g filter="url(#charGlow)">${character()}</g>
 ${bigSparkles()}
 <rect width="${W}" height="${H}" fill="url(#vignette)"/>

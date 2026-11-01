@@ -12,6 +12,8 @@ import {
   withoutHidden,
   worstMeter,
 } from "./dialogue";
+import { statusKey } from "./status-key";
+import { trayStatusFor } from "./tray-status";
 import { backfill, needsBackfill, recordAnnouncements, recordReports } from "./history";
 import type { Account, Report } from "./types";
 import { speak } from "./voice";
@@ -123,8 +125,13 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
   };
 
   /** Template line right away is too eager when an LLM is on; try it first, fall back fast. */
-  const sayStatus = async (rs: Report[]) => {
+  let lastStatusKey = "";
+  const sayStatus = async (rs: Report[], force: boolean) => {
     const s = loadSettings();
+    // Timed checks stay quiet (no LLM call, no voice) until something actually changed.
+    const key = statusKey(rs, s);
+    if (!force && key === lastStatusKey) return;
+    lastStatusKey = key;
     if (s.llm) {
       try {
         say(await withTimeout(api.llmLine(s.llmUrl, s.llmModel, llmSystem(s), llmFacts(rs, s)), 30000));
@@ -155,9 +162,10 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
   };
 
   let refreshTimer = 0;
-  const refresh = async () => {
+  const refresh = async (manual = false) => {
     if (state.loading) return;
     window.clearTimeout(refreshTimer);
+    void api.setTrayStatus("working");
     try {
       // Reload first: the dashboard may have just added, edited or removed one.
       publish({ loading: true, accounts: await api.listAccounts() });
@@ -175,21 +183,27 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
       recordReports(rs);
       publish({ reports: rs, checkedAt: Date.now(), error: null, historyVersion: state.historyVersion + 1 });
       const shown = withoutHidden(rs, synced.accounts);
-      if (!checkAlerts(shown)) void sayStatus(shown);
+      const settings = loadSettings();
+      const trayStatus = trayStatusFor(shown, settings.warnAt);
+      void api.setTrayStatus(trayStatus);
+      if (!checkAlerts(shown)) void sayStatus(shown, manual);
       const worst = worstMeter(shown);
-      const name = loadSettings().waifuName;
+      const name = settings.waifuName;
       void api.setTrayTooltip(
-        worst
+        trayStatus === "sign-in" ? `${name}: sign-in required`
+          : trayStatus === "rate-limited" ? `${name}: provider rate limited`
+          : worst
           ? `${name}: lowest is ${worst.report.label} ${worst.meter.label} at ${Math.round(worst.left)}%`
           : `${name} is monitoring your limits`,
       );
     } catch (e) {
       publish({ error: String(e) });
+      void api.setTrayStatus(trayStatusFor([{ ok: false, error: String(e), meters: [] }], loadSettings().warnAt));
       say(`System fault: ${e}`);
     } finally {
       publish({ loading: false });
       // Re-read each time so a changed interval in Settings applies to the next check.
-      if (!stopped) refreshTimer = window.setTimeout(refresh, Math.max(1, loadSettings().refreshMinutes) * 60_000);
+      if (!stopped) refreshTimer = window.setTimeout(() => void refresh(), Math.max(1, loadSettings().refreshMinutes) * 60_000);
     }
   };
 
@@ -227,10 +241,10 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
   };
 
   const unlisteners = [
-    listen("tray-refresh", () => void refresh()),
+    listen("tray-refresh", () => void refresh(true)),
     listen<MonitorRequest>(REQUEST_EVENT, ({ payload: r }) => {
       if (r.kind === "sync") void emitTo("main", STATE_EVENT, state).catch(() => {});
-      else if (r.kind === "refresh") void refresh();
+      else if (r.kind === "refresh") void refresh(true);
       else if (r.kind === "feeds") void pullFeeds();
       else if (r.kind === "say") say(r.text);
     }),
@@ -239,7 +253,7 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
   const feedTimer = window.setInterval(pullFeeds, FEED_MINUTES * 60_000);
   prepareVoice()
     .catch(() => {})
-    .then(refresh)
+    .then(() => refresh())
     .then(pullFeeds);
 
   return () => {
