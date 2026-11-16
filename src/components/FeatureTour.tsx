@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { trackAnchor } from "../tour-anchor";
 import "./FeatureTour.css";
 
 export interface TourStep {
@@ -79,8 +80,8 @@ export default function FeatureTour({
     if (!open || !step) return;
     const place = () => setRect(document.querySelector(step.target)?.getBoundingClientRect() ?? null);
     place();
-    window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
+    // Follow the target through resizes and scrolling (the narrow layout scrolls `main`).
+    return trackAnchor(window, document.querySelector(step.target), place);
   }, [open, step]);
 
   useEffect(() => {
