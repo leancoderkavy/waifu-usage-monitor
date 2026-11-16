@@ -1540,3 +1540,21 @@ footer {
 .calendar-wrap::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Let navigation wrap instead of imposing its intrinsic width on the grid. */
+.panel { min-width: 0; }
+.tabs { flex-wrap: wrap; }
+.cards { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.cal-import input { min-width: 0; }
+
+@media (max-width: 760px) {
+  main {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+    align-content: start;
+  }
+  .stage { min-height: 360px; }
+  .panel { padding: 16px 12px; min-height: 420px; }
+  .hero-actions { flex-wrap: wrap; }
+  .calendar-wrap { flex: none; overflow: visible; }
+}
