@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type NowPlaying } from "../api";
+import { playerState } from "../music-state";
 import { usePageVisible } from "../hooks/usePageVisible";
 import FeatureTour, { tourSeen, type TourStep } from "./FeatureTour";
 import "./MusicPlayer.css";
@@ -69,6 +70,10 @@ export default function MusicPlayer({ active }: { active: boolean }) {
     tourChecked.current = true;
     if (!tourSeen(TOUR_ID, TOUR_VERSION)) setTimeout(() => setTour(true), 600);
   }, [visible, np]);
+
+  // A failed command describes the state it was tried in; drop it once that state moves on.
+  const state = playerState(np);
+  useEffect(() => setError(null), [state]);
 
   const run = async (action: "toggle" | "next" | "prev") => {
     setError(null);
