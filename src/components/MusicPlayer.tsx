@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type NowPlaying } from "../api";
-import { playerState } from "../music-state";
+import { playerState, playerArtwork } from "../music-state";
 import { usePageVisible } from "../hooks/usePageVisible";
 import FeatureTour, { tourSeen, type TourStep } from "./FeatureTour";
 import "./MusicPlayer.css";
@@ -39,9 +39,9 @@ export default function MusicPlayer({ active }: { active: boolean }) {
   const poll = useCallback(async () => {
     try {
       const n = await api.mediaNow(keyRef.current);
+      const previousKey = keyRef.current;
+      setArt(previous => playerArtwork(previous, previousKey, n));
       keyRef.current = n.key || null;
-      if (n.artwork) setArt(n.artwork);
-      else if (!n.key) setArt(null);
       setNp(n);
       setPos(n.positionMs);
     } catch (e) {
