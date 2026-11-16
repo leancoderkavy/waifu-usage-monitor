@@ -33,6 +33,24 @@ test('resets long past (app was off) stay quiet', () => {
   assert.equal(takeDueResets(p, now).due.length, 0);
 });
 
+test('an expired reset time repeated by a later refresh is announced only once', () => {
+  const at = now + 60;
+  const armed = trackResets({}, [report(at)], now);
+  const first = takeDueResets(armed, at + 5);
+  assert.equal(first.due.length, 1);
+  // The provider still reports the same, now past, reset time on the next refresh.
+  const rearmed = trackResets(first.pending, [report(at)], at + 10);
+  assert.equal(takeDueResets(rearmed, at + 20).due.length, 0);
+  assert.deepEqual(rearmed, {});
+});
+
+test('a new future reset after an announced one is still tracked', () => {
+  const at = now + 60;
+  const first = takeDueResets(trackResets({}, [report(at)], now), at + 5);
+  const next = trackResets(first.pending, [report(at + 7 * 86400)], at + 10);
+  assert.equal(next['a|weekly'].at, at + 7 * 86400);
+});
+
 test('text names one reset or groups several', () => {
   const one = [{ at: 1, account: 'Claude Max', meter: 'Weekly' }];
   assert.match(resetText(one, 'Senpai'), /Claude Max · Weekly just reset/);

@@ -1553,7 +1553,9 @@ footer {
     overflow-y: auto;
     align-content: start;
   }
-  .stage { min-height: 360px; }
+  /* Room for the status label, music card, speech bubble and a visible character,
+     stacked without overlap now that the music card takes space in the column. */
+  .stage { min-height: 600px; }
   .panel { padding: 16px 12px; min-height: 420px; }
   .hero-actions { flex-wrap: wrap; }
   .calendar-wrap { flex: none; overflow: visible; }

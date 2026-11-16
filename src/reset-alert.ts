@@ -16,17 +16,21 @@ const STALE_SECS = 6 * 3600;
  * Records each meter's upcoming reset from a fresh refresh. A meter whose reset
  * time moved forward replaces its entry, so a reset the app never saw due still
  * gets announced by `takeDueResets` on the next tick.
+ *
+ * Only future reset times are armed. A provider can keep reporting a reset time
+ * that has already passed until its window rolls over; re-arming that value
+ * would announce the same reset again on every refresh.
  */
-export function trackResets(pending: PendingResets, reports: Report[]): PendingResets {
+export function trackResets(pending: PendingResets, reports: Report[], nowSecs = Date.now() / 1000): PendingResets {
   const next: PendingResets = { ...pending };
   for (const r of reports) {
     if (!r.ok) continue;
     for (const m of r.meters) {
-      if (!m.resetsAt) continue;
+      if (!m.resetsAt || m.resetsAt <= nowSecs) continue;
       const key = `${r.accountId}|${m.key}`;
       const prev = next[key];
       // Keep the earlier time when the provider's value only jitters by a minute or so.
-      if (prev && prev.at > Date.now() / 1000 && Math.abs(prev.at - m.resetsAt) < 120) continue;
+      if (prev && prev.at > nowSecs && Math.abs(prev.at - m.resetsAt) < 120) continue;
       next[key] = { at: m.resetsAt, account: r.label, meter: m.label };
     }
   }
