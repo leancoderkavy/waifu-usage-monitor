@@ -108,10 +108,17 @@ main {
   padding: 16px 12px 0;
   min-height: 0;
 }
+.stage-top {
+  align-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 10px;
+  margin-bottom: auto;
+}
 .hud-label {
-  position: absolute;
-  top: 14px;
-  left: 18px;
+  margin: -2px 0 0 6px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   font-family: var(--mono);

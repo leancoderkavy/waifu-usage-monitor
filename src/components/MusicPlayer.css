@@ -1,11 +1,11 @@
-/* In the stage's flex column rather than absolutely positioned, so it reserves
-   its own space and the speech bubble below can never slide under it. */
+/* In the stage's top row (with the status label) rather than absolutely positioned,
+   so it reserves its own space: it wraps below the label when the stage is narrow,
+   and the speech bubble below can never slide under it. */
 .music {
   position: relative;
   z-index: 3;
   flex: none;
-  align-self: flex-end;
-  margin: -2px 2px auto 0;
+  margin: -2px 2px 0 auto;
   width: 196px;
   padding: 8px 10px 10px;
   background: var(--glass);
@@ -162,8 +162,6 @@
 @media (max-width: 760px) {
   .music {
     width: 160px;
-    /* Clears the two-line status label at the stage's top left. */
-    margin-top: 28px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

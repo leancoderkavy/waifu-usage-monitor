@@ -245,6 +245,9 @@ export default function App() {
       <TitleBar name={settings.waifuName} />
       <main>
         <section className="stage">
+          {/* Status label and music card share one wrapping row, so the card drops
+              below the label whenever both don't fit side by side. */}
+          <div className="stage-top">
           <div className="hud-label">
             <span>{settings.waifuName} // STATUS</span>
             {sys && (
@@ -256,6 +259,7 @@ export default function App() {
             <b>{mood === "panic" ? "CRITICAL" : mood === "worried" ? "CAUTION" : mood === "pouty" ? "LINK ERROR" : mood === "sleepy" ? "STANDBY" : "NOMINAL"}</b>
           </div>
           <MusicPlayer active={!dormant} />
+          </div>
           <SpeechBubble name={settings.waifuName} text={line} onTyping={setTalking} />
           {!dormant && <Character settings={settings} mood={mood} talking={talking} onPoke={poke} />}
           <div className="nameplate">
