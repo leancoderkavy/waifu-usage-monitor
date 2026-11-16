@@ -15,7 +15,7 @@ const STEPS: TourStep[] = [
   {
     target: ".music-controls",
     title: "Controls",
-    body: "Previous, play/pause and next control Apple Music directly. Click the progress bar to jump within the song. Replay this tour with the ? button.",
+    body: "Previous, play/pause and next control Apple Music directly. Click the progress bar, or focus it and use the arrow keys, to jump within the song. Replay this tour with the ? button.",
   },
 ];
 
@@ -80,12 +80,28 @@ export default function MusicPlayer({ active }: { active: boolean }) {
     }
   };
 
+  const seekTo = (ms: number) => {
+    if (!np?.durationMs) return;
+    const clamped = Math.max(0, Math.min(np.durationMs, Math.round(ms)));
+    setPos(clamped);
+    api.mediaControl("seek", clamped).catch((err) => setError(String(err)));
+  };
+
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!np?.durationMs) return;
     const r = e.currentTarget.getBoundingClientRect();
-    const ms = Math.round(((e.clientX - r.left) / r.width) * np.durationMs);
-    setPos(ms);
-    api.mediaControl("seek", ms).catch((err) => setError(String(err)));
+    seekTo(((e.clientX - r.left) / r.width) * np.durationMs);
+  };
+
+  // Standard slider keys: arrows step 5 s, Page Up/Down 30 s, Home/End jump to the ends.
+  const seekKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!np?.durationMs) return;
+    const step = { ArrowRight: 5000, ArrowUp: 5000, ArrowLeft: -5000, ArrowDown: -5000, PageUp: 30000, PageDown: -30000 }[e.key];
+    if (step !== undefined) seekTo(pos + step);
+    else if (e.key === "Home") seekTo(0);
+    else if (e.key === "End") seekTo(np.durationMs);
+    else return;
+    e.preventDefault();
   };
 
   const pct = np?.durationMs ? Math.min(100, (pos / np.durationMs) * 100) : 0;
@@ -110,7 +126,19 @@ export default function MusicPlayer({ active }: { active: boolean }) {
                 <span title={np!.artist}>{np!.artist || "Unknown artist"}</span>
               </div>
             </div>
-            <div className="music-bar" onClick={seek} role="slider" aria-label="Song position" aria-valuemin={0} aria-valuemax={np!.durationMs} aria-valuenow={pos}>
+            <div
+              className="music-bar"
+              onClick={seek}
+              onKeyDown={seekKey}
+              tabIndex={np!.durationMs ? 0 : -1}
+              role="slider"
+              aria-label="Song position"
+              aria-valuemin={0}
+              aria-valuemax={np!.durationMs}
+              aria-valuenow={pos}
+              aria-valuetext={`${clock(pos)} of ${clock(np!.durationMs)}`}
+              aria-disabled={!np!.durationMs || undefined}
+            >
               <i style={{ width: `${pct}%` }} />
             </div>
             <div className="music-times">

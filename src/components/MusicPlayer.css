@@ -1,8 +1,11 @@
+/* In the stage's flex column rather than absolutely positioned, so it reserves
+   its own space and the speech bubble below can never slide under it. */
 .music {
-  position: absolute;
-  top: 14px;
-  right: 14px;
+  position: relative;
   z-index: 3;
+  flex: none;
+  align-self: flex-end;
+  margin: -2px 2px auto 0;
   width: 196px;
   padding: 8px 10px 10px;
   background: var(--glass);
@@ -82,6 +85,10 @@
   border: 1px solid var(--edge);
   cursor: pointer;
 }
+.music-bar:focus-visible {
+  outline: 2px solid var(--hud);
+  outline-offset: 2px;
+}
 .music-bar i {
   display: block;
   height: 100%;
@@ -146,10 +153,17 @@
 .music-error {
   color: var(--danger);
 }
+/* When the stage is short, the character gives up height instead of the bubble
+   being pushed up underneath the player. */
+.stage > .waifu {
+  flex: 0 1 auto;
+  min-height: 0;
+}
 @media (max-width: 760px) {
   .music {
     width: 160px;
-    top: 44px;
+    /* Clears the two-line status label at the stage's top left. */
+    margin-top: 28px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
