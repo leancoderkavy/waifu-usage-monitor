@@ -144,7 +144,7 @@ export function startMonitor(onChange: (s: MonitorState) => void): () => void {
     if (!s.resetAlerts) return;
     const text = resetText(due, s.userTitle);
     ding();
-    void notify(`${s.waifuName} · Reset`, text);
+    void notify(`${s.waifuName} Â· Reset`, text);
     say(text);
   };
 

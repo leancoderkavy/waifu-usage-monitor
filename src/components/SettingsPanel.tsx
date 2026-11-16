@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import Modal from "./Modal";
+import DesktopAgentControls from "./DesktopAgentControls";
 import { api, type CustomKind } from "../api";
 import type { Settings } from "../types";
 import { WAIFUS, waifuById } from "../waifus";
@@ -30,6 +31,7 @@ export default function SettingsPanel({ settings, onChange, onClose, onTestVoice
 
   return (
     <Modal title="Settings" onClose={onClose}>
+      <DesktopAgentControls />
       <div className="waifu-picker" role="radiogroup" aria-label="Companion">
         {WAIFUS.map((w) => (
           <button

@@ -4,9 +4,9 @@
 
 # Waifu Usage Monitor
 
-**Keep track of your Claude Code, Codex, Cursor and Grok usage limits on Windows and macOS, with an anime companion who reads them out.**
+**A Claude Code usage monitor built for Windows first, with macOS in beta. Track Codex, Cursor and Grok limits too, with an anime companion who reads them out.**
 
-A free, open-source tray / menu-bar app and always-on-top "dynamic island" for Windows and macOS. It shows how much of your AI usage limits you have left across every account: the 5-hour and weekly windows, per-model caps, and banked resets. It warns you before you hit a rate limit.
+A free, open-source Windows tray app and always-on-top "dynamic island", also available for macOS in beta. It shows how much of your AI usage limits you have left across every account: the 5-hour and weekly windows, per-model caps, and banked resets. It warns you before you hit a rate limit.
 
 [![Platform: Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](#install)
 [![Platform: macOS (beta)](https://img.shields.io/badge/macOS-beta-000000?logo=apple)](#install)
@@ -23,7 +23,7 @@ A free, open-source tray / menu-bar app and always-on-top "dynamic island" for W
 
 ## Why this one?
 
-Most usage trackers are macOS-only menu-bar apps or terminal tools. This one was built for Windows first and now runs on macOS too. It watches every major AI coding plan in one place and gives the numbers a personality.
+[CodexBar](https://github.com/steipete/CodexBar) offers a macOS menu-bar app and a Linux desktop app. Waifu Usage Monitor was built for Windows first, with macOS support in beta. It brings Claude Code, Codex, Cursor and Grok usage limits into a tray app and desktop island, with an optional anime companion.
 
 - **One glance, every limit.** A slim island at the top or bottom of your screen shows the tightest limit for each provider. Hover it for the full breakdown.
 - **Know before you hit the wall.** A burn-rate projection turns "47% left" into "at this pace you run out in 2h 10m, before the reset".
@@ -86,6 +86,14 @@ Feeds are polled every 15 minutes, with no login: [codexresets.com](https://code
 - **Sessions:** Codex and Claude Code sessions from the last 24 hours, read from local logs, plus the models Ollama has loaded. Each row shows model, effort, project, branch and context size.
 - **System:** CPU, RAM, GPU and VRAM gauges with 2-minute graphs, per-thread load and the heaviest processes. GPU stats need an NVIDIA GPU (`nvidia-smi`), so macOS shows CPU and RAM only.
 
+### Walking desktop agents
+
+Recent Claude Code and Codex sessions appear as small walking companions across the desktop work area on the monitor containing the usage island. Sakura represents Claude; Yuki represents Codex. Project and model labels distinguish each session, including subagents. The transparent overlay passes all clicks to your other apps and stays out of the taskbar.
+
+Up to 12 sessions are illustrated, newest first. Activity is inferred from local logs scanned every 10 seconds: characters walk for two minutes after activity, rest until fifteen minutes, then disappear. This does not establish whether an agent process is still running. Configured secondary Claude/Codex folders are scanned too; Cursor agents are not currently supported. With reduced motion enabled in Windows, characters stay still.
+
+Use **Settings → Desktop agents** or the tray's **Show / hide desktop agents** item to toggle the overlay. The choice persists after restart. Settings includes a one-time introduction and a permanent **Desktop agents guide** replay button. Turn the feature off and on after changing monitor layout to refit the overlay.
+
 ## Pick your waifu
 
 ![The five built-in companions: KOS-MOS, Sakura, Yuki, Akane and Luna](docs/screenshots/companions.png)
@@ -140,7 +148,7 @@ Any OpenAI-compatible server also works, such as `llama-server` on `http://local
 
 ## Install
 
-**Download:** installers for Windows (`.exe` / `.msi`) and macOS (`.dmg`, universal) will be on the [Releases](https://github.com/leancoderkavy/waifu-usage-monitor/releases) page. The macOS build is unsigned and still in beta: right-click the app and choose **Open** the first time.
+**Build from source:** no public release is available yet. Check the [Releases](https://github.com/leancoderkavy/waifu-usage-monitor/releases) page for future installers. The macOS build is unsigned and still in beta: right-click the app and choose **Open** the first time.
 
 **From source** (about 5 minutes on a fresh machine):
 
@@ -175,8 +183,8 @@ It is built to run all day without you noticing:
 
 | Project | Platform | Focus |
 | --- | --- | --- |
-| **Waifu Usage Monitor** | **Windows + macOS** tray + always-on-top island | Live plan limits for Codex, Claude, Cursor and Grok across several accounts, burn-rate projection, reset calendar, hardware monitor, companion with voice |
-| [CodexBar](https://github.com/steipete/CodexBar) | macOS menu bar | Dozens of providers, reset countdowns, spend charts, widgets |
+| **Waifu Usage Monitor** | **Windows first; macOS beta** tray + always-on-top island | Live plan limits for Codex, Claude, Cursor and Grok across several accounts, burn-rate projection, reset calendar, hardware monitor, companion with voice |
+| [CodexBar](https://github.com/steipete/CodexBar) | macOS menu bar + Linux desktop | Dozens of providers, reset countdowns, spend charts, widgets |
 | [ccusage](https://github.com/ryoppippi/ccusage) | CLI | Token and cost reports from local Claude Code / Codex logs |
 | [Claude-Code-Usage-Monitor](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) | Terminal UI | Claude burn rate and limit predictions |
 | [ccstatusline](https://github.com/sirmalloc/ccstatusline) | Claude Code statusline | Usage and cost inside the Claude Code prompt |
