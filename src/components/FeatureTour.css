@@ -1,0 +1,57 @@
+.tour-ring {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  border: 1px solid var(--hud);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 18px color-mix(in srgb, var(--hud) 55%, transparent);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  animation: tour-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tour-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.tour-card {
+  position: fixed;
+  z-index: 61;
+  padding: 14px 16px 12px;
+  background: var(--bg);
+  border: 1px solid var(--edge-strong);
+  border-left: 4px solid var(--gold);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  outline: none;
+}
+.tour-card small {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+.tour-card h4 {
+  margin: 4px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.tour-card p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  user-select: text;
+}
+.tour-actions {
+  display: flex;
+  gap: 6px;
+}
+.tour-actions span {
+  flex: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-ring {
+    animation: none;
+  }
+}

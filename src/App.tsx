@@ -20,6 +20,7 @@ import { allEvents } from "./history";
 import type { Account, Mood, Report, Session, Settings, SystemStats } from "./types";
 import { HUD_COLOR } from "./components/Kosmos";
 import Character from "./components/Character";
+import MusicPlayer from "./components/MusicPlayer";
 import SpeechBubble from "./components/SpeechBubble";
 import DataMotes from "./components/DataMotes";
 import { FOCUSED_FPS, useFrameBudget, usePageVisible } from "./hooks/usePageVisible";
@@ -254,6 +255,7 @@ export default function App() {
             )}
             <b>{mood === "panic" ? "CRITICAL" : mood === "worried" ? "CAUTION" : mood === "pouty" ? "LINK ERROR" : mood === "sleepy" ? "STANDBY" : "NOMINAL"}</b>
           </div>
+          <MusicPlayer active={!dormant} />
           <SpeechBubble name={settings.waifuName} text={line} onTyping={setTalking} />
           {!dormant && <Character settings={settings} mood={mood} talking={talking} onPoke={poke} />}
           <div className="nameplate">
