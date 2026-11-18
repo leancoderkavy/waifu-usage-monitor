@@ -2,23 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type NowPlaying } from "../api";
 import { playerState, playerArtwork } from "../music-state";
 import { usePageVisible } from "../hooks/usePageVisible";
-import FeatureTour, { tourSeen, type TourStep } from "./FeatureTour";
+import FeatureTour, { tourSeen } from "./FeatureTour";
+import { musicTourSteps } from "../music-tour";
 import "./MusicPlayer.css";
 
 const TOUR_ID = "music-player";
 const TOUR_VERSION = 1;
-const STEPS: TourStep[] = [
-  {
-    target: ".music",
-    title: "Apple Music",
-    body: "Your Apple Music now-playing card lives beside her. Open the Apple Music app and start a song; it appears here with artwork.",
-  },
-  {
-    target: ".music-controls",
-    title: "Controls",
-    body: "Previous, play/pause and next control Apple Music directly. Click the progress bar, or focus it and use the arrow keys, to jump within the song. Replay this tour with the ? button.",
-  },
-];
 
 const clock = (ms: number) => {
   const s = Math.floor(ms / 1000);
@@ -166,7 +155,7 @@ export default function MusicPlayer({ active }: { active: boolean }) {
           <div className="music-empty">
             <p>{idle ? "Apple Music is open. Pick a song." : np ? "Apple Music isn't playing." : "Looking for Apple Music…"}</p>
             <div className="music-controls">
-              <button className="wide" onClick={() => api.openAppleMusic().catch((e) => setError(String(e)))}>
+              <button className="wide music-open" onClick={() => api.openAppleMusic().catch((e) => setError(String(e)))}>
                 Open Apple Music
               </button>
             </div>
@@ -174,7 +163,7 @@ export default function MusicPlayer({ active }: { active: boolean }) {
         )}
         {error && <p className="music-error">{error}</p>}
       </div>
-      <FeatureTour id={TOUR_ID} version={TOUR_VERSION} steps={STEPS} open={tour} onClose={() => setTour(false)} />
+      <FeatureTour id={TOUR_ID} version={TOUR_VERSION} steps={musicTourSteps(connected && !idle)} open={tour} onClose={() => setTour(false)} />
     </>
   );
 }
