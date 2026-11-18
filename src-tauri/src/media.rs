@@ -8,6 +8,10 @@
 use base64::Engine;
 use serde::Serialize;
 
+#[cfg(any(windows, test))]
+#[path = "media_mime.rs"]
+mod media_mime;
+
 #[derive(Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NowPlaying {
@@ -73,7 +77,7 @@ mod imp {
         reader.LoadAsync(size).ok()?.get().ok()?;
         let mut bytes = vec![0u8; size as usize];
         reader.ReadBytes(&mut bytes).ok()?;
-        let mime = if mime.is_empty() { "image/jpeg" } else { &mime };
+        let mime = media_mime::artwork_mime(&mime);
         Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
     }
 
