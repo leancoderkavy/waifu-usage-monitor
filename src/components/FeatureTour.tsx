@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { trackAnchor } from "../tour-anchor";
+import { resolveTourSteps, tourStepsKey } from "../tour-steps";
 import "./FeatureTour.css";
 
 export interface TourStep {
@@ -58,16 +59,37 @@ export default function FeatureTour({
   const card = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
 
+  const exists = (target: string) => document.querySelector(target) !== null;
+
   // Resolve targets when opened; drop steps whose element isn't on screen.
   useEffect(() => {
     if (!open) return;
     opener.current = document.activeElement;
-    const found = steps.filter((s) => document.querySelector(s.target));
-    setReady(found);
-    setIndex(0);
-    if (found.length === 0) onClose();
+    const found = resolveTourSteps(steps, 0, exists);
+    setReady(found.ready);
+    setIndex(found.index);
+    if (found.ready.length === 0) onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // The page behind an open tour can change (e.g. Apple Music disconnects and
+  // the transport controls give way to an Open button): re-resolve against the
+  // new steps so the card never describes or rings controls that are gone.
+  const stepsKey = tourStepsKey(steps);
+  const resolvedKey = useRef(stepsKey);
+  useEffect(() => {
+    if (!open) {
+      resolvedKey.current = stepsKey;
+      return;
+    }
+    if (resolvedKey.current === stepsKey) return;
+    resolvedKey.current = stepsKey;
+    const found = resolveTourSteps(steps, index, exists);
+    setReady(found.ready);
+    setIndex(found.index);
+    if (found.ready.length === 0) onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, stepsKey]);
 
   const close = useCallback(() => {
     markSeen(id, version);
